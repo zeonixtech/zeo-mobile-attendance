@@ -1,0 +1,27 @@
+# Build web assets
+ionic build
+
+# Copy web assets to platforms
+ionic cordova prepare android
+
+# Open in Android Studio
+ionic cordova platform add android    # (already done)
+ionic cordova build android           # build APK
+ionic cordova run android             # build + deploy to device
+
+
+
+
+
+
+# Build the web app
+ionic build
+
+# Sync web assets + plugins to native project
+npx cap sync android
+
+# Open in Android Studio
+npx cap open android
+
+# Or run directly on a connected device
+npx cap run android

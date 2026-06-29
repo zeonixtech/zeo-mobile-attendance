@@ -1,0 +1,136 @@
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>
+      <ion-icon name="location-outline"></ion-icon>
+      ZeoHRM
+    </ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar color="primary">
+      <ion-title size="large">ZeoHRM</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="permission-banner" *ngIf="!locationPermissionGranted">
+    <ion-icon name="warning-outline"></ion-icon>
+    <div class="permission-text">
+      <strong>Location Permission Required</strong>
+      <p>Please grant location permission to use attendance features.</p>
+    </div>
+  </div>
+
+  <div class="user-card">
+    <ion-icon name="person-circle-outline" class="user-avatar"></ion-icon>
+    <div class="user-info">
+      <h2 class="username">{{ username }}</h2>
+      <p class="status" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence">
+        <ion-icon [name]="isWithinGeofence ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+        {{ isWithinGeofence ? 'Within Office Range' : 'Outside Office Range' }}
+      </p>
+      <p class="distance" *ngIf="currentPosition">
+        Distance: {{ getDistance() }}m from office
+      </p>
+      <p class="distance" *ngIf="!currentPosition && locationPermissionGranted">
+        Fetching location...
+      </p>
+    </div>
+  </div>
+
+  <div class="map-wrapper">
+    <div #mapContainer class="map-container"></div>
+    <div class="map-error" *ngIf="mapError">
+      <ion-icon name="map-outline"></ion-icon>
+      <p>Failed to load map. Please check your internet connection and API key.</p>
+    </div>
+    <div class="map-loading" *ngIf="!mapLoaded && !mapError">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading map...</p>
+    </div>
+  </div>
+
+  <div class="location-card" *ngIf="currentPosition">
+    <div class="location-header">
+      <div class="location-dot" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence"></div>
+      <span class="location-label">Current Location</span>
+    </div>
+    <div class="location-coords">
+      <div class="coord-row">
+        <span class="coord-label">Latitude</span>
+        <span class="coord-value">{{ currentPosition.latitude.toFixed(6) }}</span>
+      </div>
+      <div class="coord-row">
+        <span class="coord-label">Longitude</span>
+        <span class="coord-value">{{ currentPosition.longitude.toFixed(6) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="location-card fetching" *ngIf="!currentPosition && locationPermissionGranted">
+    <ion-spinner name="dots" color="medium"></ion-spinner>
+    <span>Fetching coordinates...</span>
+  </div>
+
+  <div class="button-container">
+    <ion-button
+      expand="block"
+      color="success"
+      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+      (click)="onCheckIn()"
+      class="action-button"
+    >
+      <ion-icon name="log-in-outline" slot="start"></ion-icon>
+      Check In
+    </ion-button>
+
+    <ion-button
+      expand="block"
+      color="danger"
+      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+      (click)="onCheckOut()"
+      class="action-button"
+    >
+      <ion-icon name="log-out-outline" slot="start"></ion-icon>
+      Check Out
+    </ion-button>
+  </div>
+
+  <div class="device-info-card" *ngIf="deviceInfo">
+    <ion-list-header>
+      <ion-label>
+        <ion-icon name="phone-portrait-outline"></ion-icon>
+        Device Information
+      </ion-label>
+    </ion-list-header>
+    <ion-item>
+      <ion-label>IMEI</ion-label>
+      <ion-text slot="end">{{ deviceInfo.imei }}</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>IP Address</ion-label>
+      <ion-text slot="end">{{ deviceInfo.ipAddress }}</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>Device</ion-label>
+      <ion-text slot="end">{{ deviceInfo.model }}</ion-text>
+    </ion-item>
+    <ion-item>
+      <ion-label>Platform</ion-label>
+      <ion-text slot="end">{{ deviceInfo.platform }}</ion-text>
+    </ion-item>
+  </div>
+
+  <div class="last-action" *ngIf="lastAction">
+    <ion-badge [color]="lastAction === 'check-in' ? 'success' : 'danger'">
+      Last: {{ lastAction === 'check-in' ? 'Checked In' : 'Checked Out' }}
+    </ion-badge>
+  </div>
+
+  <ion-loading
+    [isOpen]="isLoading"
+    message="Submitting attendance..."
+    spinner="crescent"
+  ></ion-loading>
+</ion-content>

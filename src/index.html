@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>ZeoHRM</title>
+
+  <base href="/" />
+
+  <meta name="color-scheme" content="light dark" />
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+
+  <link rel="icon" type="image/png" href="assets/icon/favicon.png" />
+
+  <!-- add to homescreen for ios -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="geo.location" content="yes" />
+
+  <style>
+    #map-error {
+      display: none;
+      padding: 24px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+    #map-error.visible {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <app-root></app-root>
+
+  <script>
+    window.__mapLoadPromise = null;
+    window.__mapLoadResolve = null;
+    window.__mapLoadReject = null;
+    window.__mapLoadPromise = new Promise(function(resolve, reject) {
+      window.__mapLoadResolve = resolve;
+      window.__mapLoadReject = reject;
+    });
+
+    function initMap() {
+      if (window.__mapLoadResolve) {
+        window.__mapLoadResolve(window.google);
+      }
+    }
+
+    function gm_authFailure() {
+      console.error('Google Maps authentication failed - check your API key');
+      if (window.__mapLoadReject) {
+        window.__mapLoadReject(new Error('Google Maps authentication failed'));
+      }
+    }
+  </script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDIedV7A4bRZnITIsYpU1IZDqMfA9zVNyM&libraries=places&callback=initMap" async defer
+    onerror="console.error('Failed to load Google Maps script')"></script>
+</body>
+
+</html>
