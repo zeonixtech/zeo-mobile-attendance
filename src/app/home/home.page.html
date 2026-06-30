@@ -1,18 +1,21 @@
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
     <ion-title>
-      <ion-icon name="location-outline"></ion-icon>
-      ZeoHRM
+      <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="header-logo" />
+
     </ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
+  <!-- <ion-header collapse="condense">
     <ion-toolbar color="primary">
-      <ion-title size="large">ZeoHRM</ion-title>
+      <ion-title size="large">
+        <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="header-logo" />
+
+      </ion-title>
     </ion-toolbar>
-  </ion-header>
+  </ion-header> -->
 
   <div class="permission-banner" *ngIf="!locationPermissionGranted">
     <ion-icon name="warning-outline"></ion-icon>
@@ -74,24 +77,14 @@
   </div>
 
   <div class="button-container">
-    <ion-button
-      expand="block"
-      color="success"
-      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
-      (click)="onCheckIn()"
-      class="action-button"
-    >
+    <ion-button expand="block" color="success" [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+      (click)="onCheckIn()" class="action-button">
       <ion-icon name="log-in-outline" slot="start"></ion-icon>
       Check In
     </ion-button>
 
-    <ion-button
-      expand="block"
-      color="danger"
-      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
-      (click)="onCheckOut()"
-      class="action-button"
-    >
+    <ion-button expand="block" color="danger" [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+      (click)="onCheckOut()" class="action-button">
       <ion-icon name="log-out-outline" slot="start"></ion-icon>
       Check Out
     </ion-button>
@@ -128,9 +121,5 @@
     </ion-badge>
   </div>
 
-  <ion-loading
-    [isOpen]="isLoading"
-    message="Submitting attendance..."
-    spinner="crescent"
-  ></ion-loading>
+  <ion-loading [isOpen]="isLoading" message="Submitting attendance..." spinner="crescent"></ion-loading>
 </ion-content>

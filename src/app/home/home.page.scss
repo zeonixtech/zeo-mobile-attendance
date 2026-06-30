@@ -3,8 +3,17 @@ ion-content {
 }
 
 ion-title {
+  display: flex;
+  align-items: center;
+
   ion-icon {
     margin-right: 8px;
+  }
+
+  .header-logo {
+    height: 24px;
+    margin-right: 8px;
+    vertical-align: middle;
   }
 }
 

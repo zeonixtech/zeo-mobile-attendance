@@ -1,3 +1,13 @@
 <ion-app>
-  <ion-router-outlet></ion-router-outlet>
+  <div class="splash-screen" *ngIf="showSplash" [class.fade-out]="isFading">
+    <div class="splash-content">
+      <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="splash-logo" />
+      <div class="splash-spinner-container">
+        <ion-spinner name="crescent" color="primary"></ion-spinner>
+      </div>
+      <p class="splash-text">Loading...</p>
+    </div>
+  </div>
+
+  <ion-router-outlet *ngIf="!showSplash || isFading"></ion-router-outlet>
 </ion-app>

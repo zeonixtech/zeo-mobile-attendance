@@ -11,6 +11,7 @@ $RECYCLE.BIN/
 
 *.log
 log.txt
+package-lock.json
 
 
 /.sourcemaps
@@ -31,6 +32,7 @@ log.txt
 
 # Node
 /node_modules
+/src/environments
 npm-debug.log
 yarn-error.log
 
@@ -54,6 +56,7 @@ yarn-error.log
 
 
 # Miscellaneous
+*.zip
 /.angular
 /.angular/cache
 .sass-cache/
@@ -68,3 +71,4 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+yarn.lock
