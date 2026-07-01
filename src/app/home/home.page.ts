@@ -19,8 +19,6 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   username = 'Employee';
-  companyName = 'Zeonix Technologies';
-  userImage = 'https://ionicframework.com/docs/img/demos/avatar.svg';
   isWithinGeofence = false;
   currentPosition: DevicePosition | null = null;
   deviceInfo: DeviceInfo | null = null;
@@ -51,23 +49,12 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     private router: Router
   ) { }
 
-  logout() {
-    this.authService.logout();
-    this.ngZone.run(() => {
-      this.router.navigate(['/auth/login']);
-    });
-  }
-
   async ngOnInit() {
     const claims = this.authService.getIdentityClaims();
     if (claims) {
 
       console.log("_________________", claims)
       this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
-      this.companyName = (claims as any).company || (claims as any).organization || 'Zeonix Technologies';
-      if ((claims as any).picture) {
-        this.userImage = (claims as any).picture;
-      }
     }
 
     await this.deviceInfoService.loadDeviceInfo();
@@ -292,6 +279,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
                 next: async (response) => {
                   this.isLoading = false;
                   this.lastAction = type;
+                  this.saveToHistory(type);
                   const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
                   await this.showToast(msg, 'success');
                 },
@@ -319,5 +307,30 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
       position: 'bottom',
     });
     await toast.present();
+  }
+
+  goToHome() {
+    // Already on Home page
+  }
+
+  goToHistory() {
+    this.router.navigate(['/attendance']);
+  }
+
+  private saveToHistory(type: 'check-in' | 'check-out') {
+    if (!this.currentPosition) return;
+    const stored = localStorage.getItem('attendance_history') || '[]';
+    try {
+      const history = JSON.parse(stored);
+      history.push({
+        type,
+        timestamp: new Date().toISOString(),
+        latitude: this.currentPosition.latitude,
+        longitude: this.currentPosition.longitude
+      });
+      localStorage.setItem('attendance_history', JSON.stringify(history));
+    } catch (e) {
+      console.error('Error saving history to localStorage:', e);
+    }
   }
 }

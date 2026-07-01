@@ -1,9 +1,9 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { IonicModule } from '@ionic/angular';
 import { FormsModule } from '@angular/forms';
-import { HomePage } from './home.page';
-import { HomePageRoutingModule } from './home-routing.module';
+import { IonicModule } from '@ionic/angular';
+import { AttendancePage } from './attendance.page';
+import { AttendanceRoutingModule } from './attendance-routing.module';
 import { SharedModule } from '../shared/shared.module';
 
 @NgModule({
@@ -11,9 +11,9 @@ import { SharedModule } from '../shared/shared.module';
     CommonModule,
     FormsModule,
     IonicModule,
-    HomePageRoutingModule,
+    AttendanceRoutingModule,
     SharedModule
   ],
-  declarations: [HomePage],
+  declarations: [AttendancePage]
 })
-export class HomePageModule {}
+export class AttendanceModule {}

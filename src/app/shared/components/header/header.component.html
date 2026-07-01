@@ -1,0 +1,41 @@
+<ion-menu side="end" [contentId]="contentId">
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>Profile</ion-title>
+    </ion-toolbar>
+  </ion-header>
+  <ion-content class="menu-content">
+    <div class="menu-profile-container">
+      <div class="avatar-wrapper">
+        <img [src]="userImage" alt="User Image" class="menu-user-image" />
+      </div>
+      <div class="profile-details">
+        <h3 class="menu-username">
+          <!-- {{ username }} -->
+          Anupam Bhandari
+        </h3>
+        <p class="menu-company">{{ companyName }}</p>
+      </div>
+    </div>
+
+    <div class="menu-items-container">
+      <ion-menu-toggle auto-hide="false">
+        <ion-item (click)="logout()" button detail="false" class="menu-logout-button">
+          <ion-icon name="log-out-outline" slot="start"></ion-icon>
+          <ion-label>Logout</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+    </div>
+  </ion-content>
+</ion-menu>
+
+<ion-header [translucent]="true">
+  <ion-toolbar color="primary">
+    <ion-title>
+      <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="header-logo" />
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>

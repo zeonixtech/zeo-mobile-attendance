@@ -1,0 +1,80 @@
+<app-header contentId="attendance-content"></app-header>
+
+<ion-content [fullscreen]="true" id="attendance-content">
+  <div class="header-banner">
+    <ion-icon name="time-outline" class="banner-icon"></ion-icon>
+    <div class="banner-details">
+      <h1>Attendance History</h1>
+      <p>View your past check-in and check-out logs</p>
+    </div>
+  </div>
+
+  <div class="history-list-container">
+    <div *ngIf="groupedRecords.length === 0" class="no-records-state">
+      <ion-icon name="calendar-outline"></ion-icon>
+      <h3>No logs found</h3>
+      <p>Your check-in and check-out history will appear here.</p>
+    </div>
+
+    <div class="history-card" *ngFor="let record of groupedRecords">
+      <div class="card-date-header">
+        <ion-icon name="calendar-clear-outline"></ion-icon>
+        <span>{{ record.displayDate }}</span>
+      </div>
+
+      <div class="card-content-grid">
+        <!-- Check In Column -->
+        <div class="log-column check-in-col">
+          <div class="log-type-title">
+            <span class="status-dot check-in-dot"></span>
+            Check In
+          </div>
+          <div class="log-time" *ngIf="record.checkIn">
+            {{ formatTime(record.checkIn.timestamp) }}
+          </div>
+          <div class="log-coords" *ngIf="record.checkIn">
+            <ion-icon name="location-outline"></ion-icon>
+            <span>{{ record.checkIn.latitude.toFixed(6) }}, {{ record.checkIn.longitude.toFixed(6) }}</span>
+          </div>
+          <div class="log-time empty" *ngIf="!record.checkIn">
+            -- : --
+          </div>
+        </div>
+
+        <!-- Divider Line -->
+        <div class="log-column-divider"></div>
+
+        <!-- Check Out Column -->
+        <div class="log-column check-out-col">
+          <div class="log-type-title">
+            <span class="status-dot check-out-dot"></span>
+            Check Out
+          </div>
+          <div class="log-time" *ngIf="record.checkOut">
+            {{ formatTime(record.checkOut.timestamp) }}
+          </div>
+          <div class="log-coords" *ngIf="record.checkOut">
+            <ion-icon name="location-outline"></ion-icon>
+            <span>{{ record.checkOut.latitude.toFixed(6) }}, {{ record.checkOut.longitude.toFixed(6) }}</span>
+          </div>
+          <div class="log-time empty" *ngIf="!record.checkOut">
+            -- : --
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</ion-content>
+
+<ion-footer>
+  <ion-tab-bar>
+    <ion-tab-button (click)="goToHome()">
+      <ion-icon name="home-outline"></ion-icon>
+      <ion-label>Home</ion-label>
+    </ion-tab-button>
+    <ion-tab-button (click)="goToHistory()" class="tab-selected">
+      <ion-icon name="list"></ion-icon>
+      <ion-label>History</ion-label>
+    </ion-tab-button>
+  </ion-tab-bar>
+</ion-footer>
