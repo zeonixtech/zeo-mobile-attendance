@@ -3,6 +3,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Platform } from '@ionic/angular';
 import { InAppBrowser } from '@awesome-cordova-plugins/in-app-browser/ngx';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { AuthService } from '../../services/auth';
 
 import { environment } from 'src/environments/environment';
 
@@ -21,29 +22,51 @@ export class AuthSigninComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private http: HttpClient,
-    private zone: NgZone
-  ) {}
+    private zone: NgZone,
+    private authService: AuthService
+  ) {
+    this.initializeApp();
+  }
+
+
+  initializeApp() {
+    this.platform.ready().then(() => {
+      // Handle background/resume intents from Custom URL scheme
+      (window as any).handleOpenURL = (url: string) => {
+        if (url.includes('zeohrmapp://auth')) {
+          // Process the code extraction if it bypassed the InAppBrowser context
+          const urlObj = new URL(url);
+          const customHashFragment = '#' + urlObj.search;
+          this.authService.tryLoginCodeFlow({ customHashFragment }).then(() => {
+            this.zone.run(() => {
+              this.router.navigate(['/home']);
+            });
+          }).catch(err => {
+            console.error('Error logging in via Custom URL scheme:', err);
+          });
+        }
+      };
+    });
+  }
 
   ngOnInit() {
     this.platform.ready().then(() => {
-      // 1. Check if the access token already exists to skip login
-      const existingToken = this.getCookie('access_token');
-      if (existingToken) {
-        this.zone.run(() => {
-          this.router.navigate(['/home']);
-        });
+      // Prevent triggering a new login flow if the URL contains an auth code (callback phase)
+      const hasCode = typeof window !== 'undefined' && 
+        (window.location.search.includes('code=') || window.location.hash.includes('code='));
+      
+      if (hasCode) {
+        console.log('Detected authorization code in URL, waiting for token exchange...');
         return;
       }
 
-      // 2. Check query params for redirected callback (for browser/development mode)
-      this.route.queryParams.subscribe(params => {
-        const code = params['code'];
-        if (code) {
-          this.handleAuthorizationCode(code);
-        } else {
-          this.initiateLogin();
-        }
-      });
+      if (this.authService.isAuthenticated()) {
+        this.zone.run(() => {
+          this.router.navigate(['/home']);
+        });
+      } else {
+        this.authService.login();
+      }
     });
   }
 
@@ -70,7 +93,7 @@ export class AuthSigninComponent implements OnInit {
     } else {
       // In mobile app (Cordova), open in InAppBrowser
       const browser = this.iab.create(ssoBaseUrl, '_blank', 'location=no,clearcache=yes,clearsessioncache=yes');
-      
+
       browser.on('loadstart').subscribe((event) => {
         // Intercept redirect URL containing authorization code
         if (event.url.includes('code=')) {
@@ -91,7 +114,7 @@ export class AuthSigninComponent implements OnInit {
   handleAuthorizationCode(code: string) {
     this.isLoading = true;
     const tokenUrl = environment?.SAML_PARAMS?.URL + 'token';
-    
+
     const body = new HttpParams()
       .set('grant_type', 'authorization_code')
       .set('code', code)

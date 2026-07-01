@@ -1,6 +1,6 @@
 const COMMON_VARIABLES = {
   AUTH_BASE_URL: 'https://auth.localhost.com/',
-  REDIRECT_URL: 'http://localhost:4200'
+  REDIRECT_URL: 'http://localhost'
 };
 
 export const environment = {

@@ -27,6 +27,7 @@
     "@angular/router": "20.3.25",
     "@awesome-cordova-plugins/in-app-browser": "^9.2.0",
     "@ionic/angular": "^8.0.0",
+    "angular-oauth2-oidc": "^20.0.3",
     "cordova-plugin-device": "^3.0.0",
     "cordova-plugin-geolocation": "^5.0.0",
     "ionicons": "^7.0.0",
@@ -45,10 +46,13 @@
     "@angular/compiler-cli": "20.3.25",
     "@angular/language-service": "20.3.25",
     "@ionic/angular-toolkit": "^12.0.0",
+    "@ionic/cordova-builders": "^12.3.0",
     "@types/jasmine": "~5.1.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
-    "cordova-android": "^14.0.1",
+    "cordova-android": "^15.0.0",
+    "cordova-plugin-customurlscheme": "^5.0.2",
+    "cordova-plugin-inappbrowser": "^7.0.0",
     "cordova-plugin-ionic-keyboard": "^2.0.5",
     "cordova-plugin-ionic-webview": "^5.0.0",
     "cordova-plugin-request-location-accuracy": "^2.3.0",
@@ -91,6 +95,10 @@
       },
       "cordova-plugin-request-location-accuracy": {
         "PLAY_SERVICES_LOCATION_VERSION": "16.+"
+      },
+      "cordova-plugin-inappbrowser": {},
+      "cordova-plugin-customurlscheme": {
+        "URL_SCHEME": "zeohrmapp"
       }
     },
     "platforms": [

@@ -1,10 +1,12 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, NgZone } from '@angular/core';
 import { AlertController, ToastController } from '@ionic/angular';
 import { Subscription } from 'rxjs';
+import { Router } from '@angular/router';
 import { GeolocationService, DevicePosition } from '../services/geolocation.service';
 import { DeviceInfoService, DeviceInfo } from '../services/device-info.service';
 import { GeofenceService } from '../services/geofence.service';
 import { AttendanceApiService } from '../services/attendance-api.service';
+import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
 
 @Component({
@@ -17,6 +19,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   username = 'Employee';
+  companyName = 'Zeonix Technologies';
+  userImage = 'https://ionicframework.com/docs/img/demos/avatar.svg';
   isWithinGeofence = false;
   currentPosition: DevicePosition | null = null;
   deviceInfo: DeviceInfo | null = null;
@@ -42,10 +46,30 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     private attendanceApiService: AttendanceApiService,
     private alertController: AlertController,
     private toastController: ToastController,
-    private ngZone: NgZone
-  ) {}
+    private ngZone: NgZone,
+    private authService: AuthService,
+    private router: Router
+  ) { }
+
+  logout() {
+    this.authService.logout();
+    this.ngZone.run(() => {
+      this.router.navigate(['/auth/login']);
+    });
+  }
 
   async ngOnInit() {
+    const claims = this.authService.getIdentityClaims();
+    if (claims) {
+
+      console.log("_________________", claims)
+      this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
+      this.companyName = (claims as any).company || (claims as any).organization || 'Zeonix Technologies';
+      if ((claims as any).picture) {
+        this.userImage = (claims as any).picture;
+      }
+    }
+
     await this.deviceInfoService.loadDeviceInfo();
     this.deviceInfo = this.deviceInfoService.getDeviceInfo();
 
@@ -208,10 +232,10 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     const statusColor = this.isWithinGeofence ? '#2dd36f' : '#eb445a';
     this.deviceInfoWindow.setContent(
       '<div style="padding:6px 10px;font-size:13px;line-height:1.5;">' +
-        '<div style="font-weight:700;color:#1a1a2e;margin-bottom:4px;">Your Location</div>' +
-        '<div style="color:#666;">Lat: <b>' + lat + '</b></div>' +
-        '<div style="color:#666;">Lng: <b>' + lng + '</b></div>' +
-        '<div style="margin-top:4px;color:' + statusColor + ';font-weight:600;">' + status + '</div>' +
+      '<div style="font-weight:700;color:#1a1a2e;margin-bottom:4px;">Your Location</div>' +
+      '<div style="color:#666;">Lat: <b>' + lat + '</b></div>' +
+      '<div style="color:#666;">Lng: <b>' + lng + '</b></div>' +
+      '<div style="margin-top:4px;color:' + statusColor + ';font-weight:600;">' + status + '</div>' +
       '</div>'
     );
   }
