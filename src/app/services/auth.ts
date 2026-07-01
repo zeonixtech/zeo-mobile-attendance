@@ -9,6 +9,7 @@ import { Platform } from '@ionic/angular';
   providedIn: 'root'
 })
 export class AuthService {
+  private browser: any;
 
   constructor(
     private oauthService: OAuthService,
@@ -21,6 +22,13 @@ export class AuthService {
   }
 
   private configure() {
+    const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
+    authCodeFlowConfig.redirectUri = isMobile
+      ? 'zeohrmapp://auth/login'
+      : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : 'http://localhost:8100/auth/login');
+
+    console.log('AuthService dynamic redirectUri set:', authCodeFlowConfig.redirectUri);
+
     this.oauthService.configure(authCodeFlowConfig);
     this.oauthService.setupAutomaticSilentRefresh();
     this.oauthService.loadDiscoveryDocumentAndTryLogin({ disableNonceCheck: true }).then(() => {
@@ -30,6 +38,17 @@ export class AuthService {
         });
       }
     });
+  }
+
+  public closeBrowser() {
+    if (this.browser) {
+      try {
+        this.browser.close();
+      } catch (err) {
+        console.error('Error closing InAppBrowser:', err);
+      }
+      this.browser = null;
+    }
   }
 
   public async login() {
@@ -43,16 +62,16 @@ export class AuthService {
       console.log("loginUrl__________________", loginUrl)
 
       // 2. Open login page in the secure InAppBrowser system context
-      const browser = this.iab.create(loginUrl, '_blank', 'location=no,clearsessioncache=yes,cleardata=yes');
+      this.browser = this.iab.create(loginUrl, '_blank', 'location=no,clearsessioncache=yes,cleardata=yes');
 
       // 3. Listen to loadstart and loaderror events to catch the custom scheme redirect loop
       const handleRedirect = (event: any) => {
         if (authCodeFlowConfig.redirectUri && event.url.indexOf(authCodeFlowConfig.redirectUri) === 0) {
-          browser.close();
+          this.closeBrowser();
 
           // Extract the code and state from the redirect URL
           const urlObj = new URL(event.url);
-          const customHashFragment = '#' + urlObj.search;
+          const customHashFragment = urlObj.search ? urlObj.search.replace('?', '#') : '';
 
           // 4. Feed the code back into the library to finish the token exchange
           this.oauthService.tryLoginCodeFlow({ customHashFragment, disableNonceCheck: true }).then(() => {
@@ -66,8 +85,8 @@ export class AuthService {
         }
       };
 
-      browser.on('loadstart').subscribe(handleRedirect);
-      browser.on('loaderror').subscribe(handleRedirect);
+      this.browser.on('loadstart').subscribe(handleRedirect);
+      this.browser.on('loaderror').subscribe(handleRedirect);
     } else {
       // In web browser, use standard redirect flow
       this.oauthService.initLoginFlow();

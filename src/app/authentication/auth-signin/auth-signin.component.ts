@@ -36,8 +36,9 @@ export class AuthSigninComponent implements OnInit {
         if (url.includes('zeohrmapp://auth')) {
           // Process the code extraction if it bypassed the InAppBrowser context
           const urlObj = new URL(url);
-          const customHashFragment = '#' + urlObj.search;
+          const customHashFragment = urlObj.search ? urlObj.search.replace('?', '#') : '';
           this.authService.tryLoginCodeFlow({ customHashFragment }).then(() => {
+            this.authService.closeBrowser();
             this.zone.run(() => {
               this.router.navigate(['/home']);
             });

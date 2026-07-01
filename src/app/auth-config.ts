@@ -1,18 +1,12 @@
 import { AuthConfig } from 'angular-oauth2-oidc';
 
-const isMobile = typeof window !== 'undefined' && ((window as any).cordova !== undefined || (window as any).Capacitor !== undefined);
-
-
-console.log("isMobile++++++++++++++++++++++++++++++++++", isMobile)
 export const authCodeFlowConfig: AuthConfig = {
     // Url of the Identity Provider
     issuer: 'https://stgauth.zeocrm.com/oauth2/token',
 
     // URL of the SPA to redirect the user after login
-    // This matches what you registered in WSO2
-    // redirectUri: isMobile ? 'zeohrmapp://auth/login' : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : 'http://localhost:8100/auth/login'),
-    // redirectUri: 'http://localhost:4200/auth/login',
-    redirectUri: isMobile ? 'zeohrmapp://auth/login' : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : 'http://localhost:8100/auth/login'),
+    // This matches what you registered in WSO2, and is set dynamically in AuthService
+    redirectUri: typeof window !== 'undefined' ? window.location.origin + '/auth/login' : 'http://localhost:8100/auth/login',
 
     // The SPA's id. The SPA is registerd with this id at the auth-server
     // clientId: 'aVmW5ZAiMwljuKBfZmdJE98lby8a',
