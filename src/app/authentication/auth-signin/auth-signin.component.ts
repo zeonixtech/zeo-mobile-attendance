@@ -1,6 +1,6 @@
 import { Component, OnInit, NgZone } from '@angular/core';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Platform } from '@ionic/angular';
+import { Platform, ViewWillEnter } from '@ionic/angular';
 import { InAppBrowser } from '@awesome-cordova-plugins/in-app-browser/ngx';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { AuthService } from '../../services/auth';
@@ -13,7 +13,7 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['./auth-signin.component.scss'],
   standalone: false,
 })
-export class AuthSigninComponent implements OnInit {
+export class AuthSigninComponent implements OnInit, ViewWillEnter {
   isLoading = false;
 
   constructor(
@@ -33,7 +33,8 @@ export class AuthSigninComponent implements OnInit {
     this.platform.ready().then(() => {
       // Handle background/resume intents from Custom URL scheme
       (window as any).handleOpenURL = (url: string) => {
-        if (url.includes('zeohrmapp://auth')) {
+        // Only handle login auth callbacks that contain a code, error, or state to avoid disrupting logout redirects
+        if (url.includes('zeohrmapp://auth') && (url.includes('code=') || url.includes('error=') || url.includes('state='))) {
           // Process the code extraction if it bypassed the InAppBrowser context
           const urlObj = new URL(url);
           const customHashFragment = urlObj.search ? urlObj.search.replace('?', '#') : '';
@@ -51,21 +52,30 @@ export class AuthSigninComponent implements OnInit {
   }
 
   ngOnInit() {
+    console.log('AuthSigninComponent: ngOnInit starting');
+  }
+
+  ionViewWillEnter() {
+    console.log('AuthSigninComponent: ionViewWillEnter starting');
     this.platform.ready().then(() => {
+      console.log('AuthSigninComponent: Platform ready resolved');
       // Prevent triggering a new login flow if the URL contains an auth code (callback phase)
       const hasCode = typeof window !== 'undefined' && 
         (window.location.search.includes('code=') || window.location.hash.includes('code='));
       
+      console.log('AuthSigninComponent: hasCode =', hasCode);
       if (hasCode) {
         console.log('Detected authorization code in URL, waiting for token exchange...');
         return;
       }
 
       if (this.authService.isAuthenticated()) {
+        console.log('AuthSigninComponent: User is authenticated, navigating to /home');
         this.zone.run(() => {
           this.router.navigate(['/home']);
         });
       } else {
+        console.log('AuthSigninComponent: User is NOT authenticated, calling login()');
         this.authService.login();
       }
     });

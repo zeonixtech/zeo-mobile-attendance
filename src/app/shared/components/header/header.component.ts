@@ -31,10 +31,21 @@ export class HeaderComponent implements OnInit {
     }
   }
 
-  logout() {
-    this.authService.logout();
-    this.ngZone.run(() => {
-      this.router.navigate(['/auth/login']);
-    });
+  async logout() {
+    console.log('HeaderComponent: logout clicked');
+    try {
+      await this.authService.logout();
+      console.log('HeaderComponent: authService.logout completed');
+      this.ngZone.run(() => {
+        console.log('HeaderComponent: Navigating to /auth/login');
+        this.router.navigate(['/auth/login']).then(nav => {
+          console.log('HeaderComponent: Navigation outcome:', nav);
+        }).catch(err => {
+          console.error('HeaderComponent: Navigation error:', err);
+        });
+      });
+    } catch (e) {
+      console.error('HeaderComponent: logout error', e);
+    }
   }
 }
