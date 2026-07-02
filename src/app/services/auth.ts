@@ -1,9 +1,10 @@
 import { Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
-import { authCodeFlowConfig } from '../auth-config';
+import { authCodeFlowConfig, commonMobileAppVariable } from '../auth-config';
 import { InAppBrowser } from '@awesome-cordova-plugins/in-app-browser/ngx';
 import { Platform } from '@ionic/angular';
+import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -24,15 +25,15 @@ export class AuthService {
   private configure() {
     const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
     authCodeFlowConfig.redirectUri = isMobile
-      ? 'zeohrmapp://auth/login'
-      : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : 'http://localhost:8100/auth/login');
+      ? commonMobileAppVariable.MOBILE_APP_NAME + '://auth/login'
+      : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : environment.baseUrl + 'auth/login');
 
     console.log('AuthService dynamic redirectUri set:', authCodeFlowConfig.redirectUri);
 
     this.oauthService.configure(authCodeFlowConfig);
-    this.oauthService.setupAutomaticSilentRefresh();
     this.oauthService.loadDiscoveryDocumentAndTryLogin({ disableNonceCheck: true }).then(() => {
       if (this.isAuthenticated()) {
+        this.oauthService.setupAutomaticSilentRefresh();
         this.zone.run(() => {
           this.router.navigate(['/home']);
         });
@@ -82,6 +83,7 @@ export class AuthService {
             console.log('AuthService: tryLoginCodeFlow starting');
             this.oauthService.tryLoginCodeFlow({ customHashFragment, disableNonceCheck: true }).then(() => {
               console.log('Login successful');
+              this.oauthService.setupAutomaticSilentRefresh();
               this.zone.run(() => {
                 this.router.navigate(['/home']);
               });
@@ -117,9 +119,9 @@ export class AuthService {
         const idToken = this.oauthService.getIdToken() || '';
         this.oauthService.logOut(true);
 
-        const logoutUrl = 'https://stgauth.zeocrm.com/oidc/logout' +
+        const logoutUrl = commonMobileAppVariable.WSO2_URL + 'oidc/logout' +
           '?id_token_hint=' + encodeURIComponent(idToken) +
-          '&post_logout_redirect_uri=' + encodeURIComponent('zeohrmapp://auth/login');
+          '&post_logout_redirect_uri=' + encodeURIComponent(commonMobileAppVariable.MOBILE_APP_NAME + '://auth/login');
 
         console.log('Mobile logoutUrl:', logoutUrl);
 
@@ -146,21 +148,21 @@ export class AuthService {
 
         browser.on('loadstart').subscribe((event) => {
           console.log('AuthService logout loadstart:', event.url);
-          if (event.url.indexOf('zeohrmapp://auth') === 0) {
+          if (event.url.indexOf(commonMobileAppVariable.MOBILE_APP_NAME + '://auth') === 0) {
             doResolve('loadstart');
           }
         });
 
         browser.on('customscheme').subscribe((event) => {
           console.log('AuthService logout customscheme:', event.url);
-          if (event.url.indexOf('zeohrmapp://auth') === 0) {
+          if (event.url.indexOf(commonMobileAppVariable.MOBILE_APP_NAME + '://auth') === 0) {
             doResolve('customscheme');
           }
         });
 
         browser.on('loaderror').subscribe((event) => {
           console.log('AuthService logout loaderror:', event.url);
-          if (event.url.indexOf('zeohrmapp://auth') === 0) {
+          if (event.url.indexOf(commonMobileAppVariable.MOBILE_APP_NAME + '://auth') === 0) {
             doResolve('loaderror');
           }
         });
@@ -192,6 +194,10 @@ export class AuthService {
 
   public getAccessToken() {
     return this.oauthService.getAccessToken();
+  }
+
+  public setupAutomaticSilentRefresh() {
+    this.oauthService.setupAutomaticSilentRefresh();
   }
 
   public isAuthenticated(): boolean {
