@@ -1,11 +1,20 @@
 <ion-app>
   <div class="splash-screen" *ngIf="showSplash" [class.fade-out]="isFading">
+    <!-- Interactive Background Effects -->
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+
     <div class="splash-content">
-      <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="splash-logo" />
-      <div class="splash-spinner-container">
-        <ion-spinner name="crescent" color="primary"></ion-spinner>
+      <div class="logo-container">
+        <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="splash-logo" />
       </div>
-      <p class="splash-text">Loading...</p>
+
+      <div class="loader-section">
+        <div class="splash-spinner-container">
+          <ion-spinner name="crescent" color="primary"></ion-spinner>
+        </div>
+        <p class="splash-text">Loading...</p>
+      </div>
     </div>
   </div>
 

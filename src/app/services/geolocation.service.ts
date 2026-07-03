@@ -1,5 +1,6 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { AlertController } from '@ionic/angular';
 
 declare const navigator: any;
 declare const cordova: any;
@@ -20,7 +21,10 @@ export class GeolocationService {
   private watchId: number | null = null;
   private permissionGranted = false;
 
-  constructor(private zone: NgZone) {}
+  constructor(
+    private zone: NgZone,
+    private alertController: AlertController
+  ) {}
 
   getCurrentPosition(): Observable<DevicePosition | null> {
     return this.currentPosition$.asObservable();
@@ -44,25 +48,47 @@ export class GeolocationService {
       try {
         cordova.plugins.permissions.checkPermission(
           FINE_LOCATION,
-          (status: any) => {
+          async (status: any) => {
             if (status.hasPermission) {
               this.permissionGranted = true;
               resolve(true);
             } else {
-              cordova.plugins.permissions.requestPermissions(
-                [FINE_LOCATION, COARSE_LOCATION],
-                (granted: any) => {
-                  this.permissionGranted = granted.hasPermission;
-                  resolve(granted.hasPermission);
-                },
-                () => {
-                  this.permissionGranted = false;
-                  resolve(false);
-                }
-              );
+              // Show explaining popup before triggering native permissions dialog
+              const alert = await this.alertController.create({
+                header: 'Precise GPS Required',
+                message: 'ZeoHRM needs precise location permission to verify your office check-in. Please select "Precise" location and click Allow on the next screen.',
+                backdropDismiss: false,
+                buttons: [
+                  {
+                    text: 'Cancel',
+                    role: 'cancel',
+                    handler: () => {
+                      this.permissionGranted = false;
+                      resolve(false);
+                    }
+                  },
+                  {
+                    text: 'Continue',
+                    handler: () => {
+                      cordova.plugins.permissions.requestPermissions(
+                        [FINE_LOCATION, COARSE_LOCATION],
+                        (granted: any) => {
+                          this.permissionGranted = granted.hasPermission;
+                          resolve(granted.hasPermission);
+                        },
+                        () => {
+                          this.permissionGranted = false;
+                          resolve(false);
+                        }
+                      );
+                    }
+                  }
+                ]
+              });
+              await alert.present();
             }
           },
-          () => {
+          async () => {
             cordova.plugins.permissions.requestPermissions(
               [FINE_LOCATION, COARSE_LOCATION],
               (granted: any) => {
@@ -92,7 +118,17 @@ export class GeolocationService {
     return new Promise<void>((resolve) => {
       cordova.plugins.locationAccuracy.request(
         () => resolve(),
-        () => resolve()
+        async (error: any) => {
+          console.warn('Location accuracy request failed:', error);
+          const alert = await this.alertController.create({
+            header: 'GPS Location Disabled',
+            message: 'High accuracy GPS is required for attendance tracking. Please enable Location/GPS services on your device.',
+            buttons: ['OK']
+          });
+          await alert.present();
+          resolve();
+        },
+        3 // REQUEST_PRIORITY_HIGH_ACCURACY
       );
     });
   }

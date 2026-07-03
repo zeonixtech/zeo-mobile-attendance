@@ -1,7 +1,13 @@
 <ion-menu side="end" [contentId]="contentId">
-  <ion-header>
+  <ion-header class="ion-no-border">
     <ion-toolbar>
-      <ion-title>Profile</ion-title>
+      <ion-buttons slot="end">
+        <ion-menu-toggle>
+          <ion-button color="medium">
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </ion-menu-toggle>
+      </ion-buttons>
     </ion-toolbar>
   </ion-header>
   <ion-content class="menu-content">
@@ -32,7 +38,7 @@
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
     <ion-title>
-      <img src="https://crm.localhost.com/crm2/assets/images/logo.png" alt="ZeoHRM Logo" class="header-logo" />
+      <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="header-logo" />
     </ion-title>
     <ion-buttons slot="end">
       <ion-menu-button></ion-menu-button>

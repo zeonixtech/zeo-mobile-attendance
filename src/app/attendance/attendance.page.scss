@@ -165,20 +165,4 @@ ion-content {
   }
 }
 
-/* Tab Bar Styling (Footer) */
-ion-tab-bar {
-  --background: #ffffff;
-  --border: 1px solid rgba(0, 0, 0, 0.08);
-  height: 56px;
 
-  ion-tab-button {
-    --color: #888888;
-    --color-selected: var(--ion-color-primary);
-    font-weight: 500;
-
-    &.tab-selected {
-      --color: var(--ion-color-primary);
-      color: var(--ion-color-primary);
-    }
-  }
-}

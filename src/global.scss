@@ -123,3 +123,60 @@ ion-menu {
     }
   }
 }
+
+/* Global Tab Bar Styling (Footer) */
+ion-tab-bar {
+  --background: #ffffff;
+  --border: 1px solid rgba(0, 0, 0, 0.06);
+  height: 62px;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
+  
+  ion-tab-button {
+    --color: #8e8e93;
+    --color-selected: var(--ion-color-primary, #4f46e5);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.2px;
+    
+    ion-icon {
+      font-size: 24px;
+      margin-bottom: 5px !important;
+      transition: transform 0.2s ease;
+    }
+    
+    &.tab-selected {
+      --color: var(--ion-color-primary, #4f46e5);
+      color: var(--ion-color-primary, #4f46e5);
+      
+      ion-icon {
+        transform: scale(1.08);
+      }
+    }
+  }
+}
+
+/* Adjust header heights and margins to be more compact */
+ion-header {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+
+  ion-toolbar {
+    --padding-top: 2px !important;
+    --padding-bottom: 2px !important;
+    --min-height: 48px !important;
+    min-height: 48px !important;
+  }
+}
+
+ion-menu ion-header {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+
+  ion-toolbar {
+    --padding-top: 0px !important;
+    --padding-bottom: 0px !important;
+    --min-height: 40px !important;
+    min-height: 40px !important;
+  }
+}

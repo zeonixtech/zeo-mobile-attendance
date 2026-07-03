@@ -51,6 +51,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "cordova-android": "^15.0.0",
+    "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-customurlscheme": "^5.0.2",
     "cordova-plugin-inappbrowser": "^7.0.0",
     "cordova-plugin-ionic-keyboard": "^2.0.5",
@@ -99,7 +100,8 @@
       "cordova-plugin-inappbrowser": {},
       "cordova-plugin-customurlscheme": {
         "URL_SCHEME": "zeohrmapp"
-      }
+      },
+      "cordova-plugin-android-permissions": {}
     },
     "platforms": [
       "android"
