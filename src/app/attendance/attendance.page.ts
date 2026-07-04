@@ -6,6 +6,7 @@ export interface HistoryEntry {
   timestamp: string;
   latitude: number;
   longitude: number;
+  mode?: string;
 }
 
 export interface DateGroupedAttendance {
@@ -104,14 +105,16 @@ export class AttendancePage implements OnInit {
         type: 'check-in',
         timestamp: checkInTime.toISOString(),
         latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001
+        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
+        mode: 'Office'
       });
 
       records.push({
         type: 'check-out',
         timestamp: checkOutTime.toISOString(),
         latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001
+        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
+        mode: 'Office'
       });
     }
 

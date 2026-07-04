@@ -27,6 +27,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   mapLoaded = false;
   mapError = false;
   locationPermissionGranted = false;
+  selectedPerimeter: 'office' | 'field_duty' | 'remote' | null = null;
 
   private positionSub!: Subscription;
   private map: any;
@@ -55,6 +56,22 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
 
       console.log("_________________", claims)
       this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
+    }
+
+    this.selectedPerimeter = localStorage.getItem('selected_perimeter') as any;
+
+    // Load last action state from history
+    const storedHistory = localStorage.getItem('attendance_history');
+    if (storedHistory) {
+      try {
+        const history = JSON.parse(storedHistory);
+        if (history.length > 0) {
+          history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          this.lastAction = history[0].type;
+        }
+      } catch (e) {
+        console.error('Error loading last action from history:', e);
+      }
     }
 
     await this.deviceInfoService.loadDeviceInfo();
@@ -239,12 +256,19 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     return distance.toFixed(2);
   }
 
+  getFormattedMode(): string {
+    if (this.selectedPerimeter === 'office') return 'Office';
+    if (this.selectedPerimeter === 'field_duty') return 'Field Duty';
+    if (this.selectedPerimeter === 'remote') return 'Remote Work';
+    return 'Office';
+  }
+
   async onCheckIn() {
     if (!this.currentPosition || !this.deviceInfo) {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if (!this.isWithinGeofence) {
+    if (this.selectedPerimeter === 'office' && !this.isWithinGeofence) {
       await this.showToast('You must be within 10 meters of the office to check in.', 'danger');
       return;
     }
@@ -256,7 +280,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if (!this.isWithinGeofence) {
+    if (this.selectedPerimeter === 'office' && !this.isWithinGeofence) {
       await this.showToast('You must be within 10 meters of the office to check out.', 'danger');
       return;
     }
@@ -264,9 +288,10 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private async submitAttendance(type: 'check-in' | 'check-out') {
+    const modeStr = this.getFormattedMode();
     const alert = await this.alertController.create({
-      header: `Confirm ${type === 'check-in' ? 'Check In' : 'Check Out'}`,
-      message: `Are you sure you want to ${type === 'check-in' ? 'check in' : 'check out'}?`,
+      header: `Confirm ${type === 'check-in' ? 'Check In' : 'Check Out'} (${modeStr})`,
+      message: `Are you sure you want to ${type === 'check-in' ? 'check in' : 'check out'} for ${modeStr}?`,
       buttons: [
         { text: 'Cancel', role: 'cancel' },
         {
@@ -274,12 +299,12 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
           handler: async () => {
             this.isLoading = true;
             this.attendanceApiService
-              .postAttendance(type, this.currentPosition!, this.deviceInfo!)
+              .postAttendance(type, this.currentPosition!, this.deviceInfo!, modeStr)
               .subscribe({
                 next: async (response) => {
                   this.isLoading = false;
                   this.lastAction = type;
-                  this.saveToHistory(type);
+                  this.saveToHistory(type, modeStr);
                   const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
                   await this.showToast(msg, 'success');
                 },
@@ -317,7 +342,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     this.router.navigate(['/attendance']);
   }
 
-  private saveToHistory(type: 'check-in' | 'check-out') {
+  private saveToHistory(type: 'check-in' | 'check-out', mode: string) {
     if (!this.currentPosition) return;
     const stored = localStorage.getItem('attendance_history') || '[]';
     try {
@@ -326,7 +351,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
         type,
         timestamp: new Date().toISOString(),
         latitude: this.currentPosition.latitude,
-        longitude: this.currentPosition.longitude
+        longitude: this.currentPosition.longitude,
+        mode
       });
       localStorage.setItem('attendance_history', JSON.stringify(history));
     } catch (e) {

@@ -31,6 +31,34 @@ export class HeaderComponent implements OnInit {
     }
   }
 
+  get selectedPerimeterName(): string {
+    const selected = localStorage.getItem('selected_perimeter');
+    if (selected === 'office') return 'Office';
+    if (selected === 'field_duty') return 'Field Duty';
+    if (selected === 'remote') return 'Remote Work';
+    return '';
+  }
+
+  isCheckedIn(): boolean {
+    const stored = localStorage.getItem('attendance_history');
+    if (!stored) return false;
+    try {
+      const history = JSON.parse(stored);
+      if (history.length === 0) return false;
+      // Sort by timestamp descending
+      history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      return history[0].type === 'check-in';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  switchMode() {
+    this.ngZone.run(() => {
+      this.router.navigate(['/select-option'], { queryParams: { switching: 'true' } });
+    });
+  }
+
   async logout() {
     console.log('HeaderComponent: logout clicked');
     try {

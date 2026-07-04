@@ -21,10 +21,22 @@
           Anupam Bhandari
         </h3>
         <p class="menu-company">{{ companyName }}</p>
+        <div *ngIf="selectedPerimeterName" style="margin-top: 8px;">
+          <ion-badge [color]="selectedPerimeterName === 'Office' ? 'success' : (selectedPerimeterName === 'Field Duty' ? 'warning' : 'secondary')" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+            {{ selectedPerimeterName }}
+          </ion-badge>
+        </div>
       </div>
     </div>
 
     <div class="menu-items-container">
+      <ion-menu-toggle auto-hide="false" *ngIf="!isCheckedIn() && selectedPerimeterName">
+        <ion-item (click)="switchMode()" button detail="false" class="menu-switch-button">
+          <ion-icon name="swap-horizontal-outline" slot="start"></ion-icon>
+          <ion-label>Switch Attendance Mode</ion-label>
+        </ion-item>
+      </ion-menu-toggle>
+
       <ion-menu-toggle auto-hide="false">
         <ion-item (click)="logout()" button detail="false" class="menu-logout-button">
           <ion-icon name="log-out-outline" slot="start"></ion-icon>

@@ -29,12 +29,17 @@
         <ion-icon [name]="isWithinGeofence ? 'checkmark-circle' : 'close-circle'"></ion-icon>
         {{ isWithinGeofence ? 'Within Office Range' : 'Outside Office Range' }}
       </p>
-      <p class="distance" *ngIf="currentPosition">
+      <p class="distance" *ngIf="selectedPerimeter === 'office' && currentPosition">
         Distance: {{ getDistance() }}m from office
       </p>
       <p class="distance" *ngIf="!currentPosition && locationPermissionGranted">
         Fetching location...
       </p>
+      <div style="margin-top: 6px;">
+        <ion-badge [color]="selectedPerimeter === 'office' ? 'success' : (selectedPerimeter === 'field_duty' ? 'warning' : 'secondary')" style="padding: 6px 10px; border-radius: 12px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
+          Mode: {{ getFormattedMode() }}
+        </ion-badge>
+      </div>
     </div>
   </div>
 
@@ -73,13 +78,13 @@
   </div>
 
   <div class="button-container">
-    <ion-button expand="block" color="success" [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+    <ion-button expand="block" color="success" [disabled]="(selectedPerimeter === 'office' && !isWithinGeofence) || isLoading || !currentPosition"
       (click)="onCheckIn()" class="action-button">
       <ion-icon name="log-in-outline" slot="start"></ion-icon>
       Check In
     </ion-button>
 
-    <ion-button expand="block" color="danger" [disabled]="!isWithinGeofence || isLoading || !currentPosition"
+    <ion-button expand="block" color="danger" [disabled]="(selectedPerimeter === 'office' && !isWithinGeofence) || isLoading || !currentPosition"
       (click)="onCheckOut()" class="action-button">
       <ion-icon name="log-out-outline" slot="start"></ion-icon>
       Check Out

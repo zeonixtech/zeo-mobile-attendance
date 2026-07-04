@@ -36,6 +36,11 @@
             <ion-icon name="location-outline"></ion-icon>
             <span>{{ record.checkIn.latitude.toFixed(6) }}, {{ record.checkIn.longitude.toFixed(6) }}</span>
           </div>
+          <div class="log-mode" *ngIf="record.checkIn" style="margin-top: 6px;">
+            <ion-badge [color]="(record.checkIn.mode || 'Office') === 'Office' ? 'success' : ((record.checkIn.mode || 'Office') === 'Field Duty' ? 'warning' : 'secondary')" style="font-size: 9px; padding: 4px 8px; border-radius: 8px; font-weight: 600;">
+              Attendance Mode: {{ record.checkIn.mode || 'Office' }}
+            </ion-badge>
+          </div>
           <div class="log-time empty" *ngIf="!record.checkIn">
             -- : --
           </div>
@@ -56,6 +61,11 @@
           <div class="log-coords" *ngIf="record.checkOut">
             <ion-icon name="location-outline"></ion-icon>
             <span>{{ record.checkOut.latitude.toFixed(6) }}, {{ record.checkOut.longitude.toFixed(6) }}</span>
+          </div>
+          <div class="log-mode" *ngIf="record.checkOut" style="margin-top: 6px;">
+            <ion-badge [color]="(record.checkOut.mode || 'Office') === 'Office' ? 'success' : ((record.checkOut.mode || 'Office') === 'Field Duty' ? 'warning' : 'secondary')" style="font-size: 9px; padding: 4px 8px; border-radius: 8px; font-weight: 600;">
+              Attendance Mode: {{ record.checkOut.mode || 'Office' }}
+            </ion-badge>
           </div>
           <div class="log-time empty" *ngIf="!record.checkOut">
             -- : --

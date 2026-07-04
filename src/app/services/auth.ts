@@ -111,6 +111,7 @@ export class AuthService {
   }
 
   public logout(): Promise<void> {
+    localStorage.removeItem('selected_perimeter');
     const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
     console.log('AuthService: logout called, isMobile =', isMobile);
 

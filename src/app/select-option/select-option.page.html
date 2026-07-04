@@ -1,0 +1,68 @@
+<ion-content class="ion-padding selection-content">
+  <!-- Floating back button shown only in switching mode -->
+  <ion-button fill="clear" color="dark" class="back-floating-button" *ngIf="isSwitching" (click)="goBack()">
+    <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+  </ion-button>
+
+  <div class="header-container">
+    <div class="logo-wrapper">
+      <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="brand-logo" />
+    </div>
+    <h1 class="welcome-title">Welcome, {{ username }}!</h1>
+    <p class="subtitle">Please select your attendance mode. This is mandatory to proceed.</p>
+  </div>
+
+  <div class="cards-container">
+    <!-- Option 1: Office (Inside Perimeter) -->
+    <div class="mode-card" [class.selected]="selectedMode === 'office'" (click)="selectMode('office')">
+      <div class="badge inside">Inside Perimeter</div>
+      <div class="card-image-container">
+        <img src="assets/images/office_perimeter.png" alt="Office Work" class="mode-image" />
+      </div>
+      <div class="card-details">
+        <h2 class="card-title">Office Work</h2>
+        <p class="card-description">Verify attendance while physically working at the office office range.</p>
+      </div>
+      <div class="selection-indicator">
+        <ion-icon [name]="selectedMode === 'office' ? 'checkbox' : 'square-outline'"></ion-icon>
+      </div>
+    </div>
+
+    <!-- Option 2: Field Duty (Outside Perimeter) -->
+    <div class="mode-card" [class.selected]="selectedMode === 'field_duty'" (click)="selectMode('field_duty')">
+      <div class="badge outside">Outside Perimeter</div>
+      <div class="card-image-container">
+        <img src="assets/images/field_duty.png" alt="Field Duty" class="mode-image" />
+      </div>
+      <div class="card-details">
+        <h2 class="card-title">Field Duty</h2>
+        <p class="card-description">Record attendance while visiting clients, vendors, or on external assignments.</p>
+      </div>
+      <div class="selection-indicator">
+        <ion-icon [name]="selectedMode === 'field_duty' ? 'checkbox' : 'square-outline'"></ion-icon>
+      </div>
+    </div>
+
+    <!-- Option 3: Remote Work (Outside Perimeter) -->
+    <div class="mode-card" [class.selected]="selectedMode === 'remote'" (click)="selectMode('remote')">
+      <div class="badge outside">Outside Perimeter</div>
+      <div class="card-image-container">
+        <img src="assets/images/remote_work.png" alt="Remote Work" class="mode-image" />
+      </div>
+      <div class="card-details">
+        <h2 class="card-title">Remote Work</h2>
+        <p class="card-description">Record attendance when working from home or alternate locations.</p>
+      </div>
+      <div class="selection-indicator">
+        <ion-icon [name]="selectedMode === 'remote' ? 'checkbox' : 'square-outline'"></ion-icon>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-container">
+    <ion-button expand="block" class="confirm-button" [disabled]="!selectedMode || isLoading" (click)="confirmSelection()">
+      <span *ngIf="!isLoading">Confirm & Proceed</span>
+      <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+    </ion-button>
+  </div>
+</ion-content>

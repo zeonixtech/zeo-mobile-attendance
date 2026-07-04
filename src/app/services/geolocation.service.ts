@@ -40,8 +40,59 @@ export class GeolocationService {
 
   async checkAndRequestPermission(): Promise<boolean> {
     if (typeof cordova === 'undefined') {
-      this.permissionGranted = true;
-      return true;
+      if (navigator.permissions && navigator.permissions.query) {
+        try {
+          const result = await navigator.permissions.query({ name: 'geolocation' as any });
+          if (result.state === 'granted') {
+            this.permissionGranted = true;
+            return true;
+          } else if (result.state === 'prompt') {
+            return new Promise<boolean>((resolve) => {
+              navigator.geolocation.getCurrentPosition(
+                () => {
+                  this.permissionGranted = true;
+                  resolve(true);
+                },
+                (error: any) => {
+                  if (error.code === 1) { // PERMISSION_DENIED
+                    this.permissionGranted = false;
+                    resolve(false);
+                  } else {
+                    // POSITION_UNAVAILABLE (2) or TIMEOUT (3) means permission was allowed but coordinates couldn't be resolved.
+                    this.permissionGranted = true;
+                    resolve(true);
+                  }
+                },
+                { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }
+              );
+            });
+          } else {
+            this.permissionGranted = false;
+            return false;
+          }
+        } catch (e) {
+          // Fallback
+        }
+      }
+
+      return new Promise<boolean>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          () => {
+            this.permissionGranted = true;
+            resolve(true);
+          },
+          (error: any) => {
+            if (error.code === 1) { // PERMISSION_DENIED
+              this.permissionGranted = false;
+              resolve(false);
+            } else {
+              this.permissionGranted = true;
+              resolve(true);
+            }
+          },
+          { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }
+        );
+      });
     }
 
     return new Promise<boolean>((resolve) => {

@@ -180,3 +180,57 @@ ion-menu ion-header {
     min-height: 40px !important;
   }
 }
+
+/* Custom switch button inside menu list */
+.menu-switch-button {
+  --background: rgba(56, 128, 255, 0.08);
+  --color: #3880ff;
+  --border-radius: 10px;
+  margin-top: 10px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+
+  &:hover {
+    --background: rgba(56, 128, 255, 0.12);
+  }
+
+  ion-icon {
+    font-size: 22px;
+  }
+}
+
+/* Custom header active mode layout and badges */
+.header-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .header-logo {
+    height: 24px;
+    object-fit: contain;
+  }
+
+  .header-mode-badge {
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+    &.office {
+      background: #2dd36f; /* Green */
+    }
+
+    &.field {
+      background: #ffc409; /* Yellow */
+      color: #1a1a2e;
+    }
+
+    &.remote {
+      background: #3880ff; /* Blue */
+    }
+  }
+}

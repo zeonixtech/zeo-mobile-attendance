@@ -14,6 +14,7 @@ export interface AttendancePayload {
   timestamp: string;
   deviceModel: string;
   platform: string;
+  mode?: string;
 }
 
 export interface AttendanceResponse {
@@ -32,7 +33,8 @@ export class AttendanceApiService {
   postAttendance(
     type: 'check-in' | 'check-out',
     position: DevicePosition,
-    deviceInfo: DeviceInfo
+    deviceInfo: DeviceInfo,
+    mode?: string
   ): Observable<AttendanceResponse> {
     const payload: AttendancePayload = {
       latitude: position.latitude,
@@ -43,6 +45,7 @@ export class AttendanceApiService {
       timestamp: new Date().toISOString(),
       deviceModel: deviceInfo.model,
       platform: deviceInfo.platform,
+      mode: mode || 'Office'
     };
 
     const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
