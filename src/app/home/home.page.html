@@ -19,11 +19,12 @@
   </div>
 
   <div class="user-card">
-    <ion-icon name="person-circle-outline" class="user-avatar"></ion-icon>
+    <!-- <ion-icon name="person-circle-outline" class="user-avatar"></ion-icon> -->
+    <img [src]="userImage" class="user-avatar" />
+
     <div class="user-info">
       <h2 class="username">
-        <!-- {{ username }} -->
-        Anupam Bhandari
+        {{ username }}
       </h2>
       <p class="status" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence">
         <ion-icon [name]="isWithinGeofence ? 'checkmark-circle' : 'close-circle'"></ion-icon>
@@ -36,7 +37,9 @@
         Fetching location...
       </p>
       <div style="margin-top: 6px;">
-        <ion-badge [color]="selectedPerimeter === 'office' ? 'success' : (selectedPerimeter === 'field_duty' ? 'warning' : 'secondary')" style="padding: 6px 10px; border-radius: 12px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
+        <ion-badge
+          [color]="selectedPerimeter === 'office' ? 'success' : (selectedPerimeter === 'field_duty' ? 'warning' : 'secondary')"
+          style="padding: 6px 10px; border-radius: 12px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
           Mode: {{ getFormattedMode() }}
         </ion-badge>
       </div>
@@ -78,13 +81,15 @@
   </div>
 
   <div class="button-container">
-    <ion-button expand="block" color="success" [disabled]="(selectedPerimeter === 'office' && !isWithinGeofence) || isLoading || !currentPosition"
+    <ion-button expand="block" color="success"
+      [disabled]="((selectedPerimeter === 'office' || !selectedPerimeter) && !isWithinGeofence) || isLoading || !currentPosition"
       (click)="onCheckIn()" class="action-button">
       <ion-icon name="log-in-outline" slot="start"></ion-icon>
       Check In
     </ion-button>
 
-    <ion-button expand="block" color="danger" [disabled]="(selectedPerimeter === 'office' && !isWithinGeofence) || isLoading || !currentPosition"
+    <ion-button expand="block" color="danger"
+      [disabled]="((selectedPerimeter === 'office' || !selectedPerimeter) && !isWithinGeofence) || isLoading || !currentPosition"
       (click)="onCheckOut()" class="action-button">
       <ion-icon name="log-out-outline" slot="start"></ion-icon>
       Check Out

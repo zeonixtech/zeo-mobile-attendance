@@ -39,7 +39,11 @@ export class GeolocationService {
   }
 
   async checkAndRequestPermission(): Promise<boolean> {
-    if (typeof cordova === 'undefined') {
+    if (this.permissionGranted) {
+      return true;
+    }
+
+    if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.permissions) {
       if (navigator.permissions && navigator.permissions.query) {
         try {
           const result = await navigator.permissions.query({ name: 'geolocation' as any });
@@ -60,10 +64,10 @@ export class GeolocationService {
                   } else {
                     // POSITION_UNAVAILABLE (2) or TIMEOUT (3) means permission was allowed but coordinates couldn't be resolved.
                     this.permissionGranted = true;
-                    resolve(true);
+                    resolve(false); // Resolve false so we don't proceed without coordinates
                   }
                 },
-                { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }
+                { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
               );
             });
           } else {
@@ -87,10 +91,10 @@ export class GeolocationService {
               resolve(false);
             } else {
               this.permissionGranted = true;
-              resolve(true);
+              resolve(false); // Resolve false so we don't proceed without coordinates
             }
           },
-          { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
         );
       });
     }

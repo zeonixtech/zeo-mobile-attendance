@@ -17,12 +17,13 @@
       </div>
       <div class="profile-details">
         <h3 class="menu-username">
-          <!-- {{ username }} -->
-          Anupam Bhandari
+          {{ username }}
         </h3>
         <p class="menu-company">{{ companyName }}</p>
         <div *ngIf="selectedPerimeterName" style="margin-top: 8px;">
-          <ion-badge [color]="selectedPerimeterName === 'Office' ? 'success' : (selectedPerimeterName === 'Field Duty' ? 'warning' : 'secondary')" style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+          <ion-badge
+            [color]="selectedPerimeterName === 'Office' ? 'success' : (selectedPerimeterName === 'Field Duty' ? 'warning' : 'secondary')"
+            style="padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
             {{ selectedPerimeterName }}
           </ion-badge>
         </div>

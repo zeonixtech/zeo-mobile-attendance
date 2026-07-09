@@ -8,6 +8,7 @@ import { GeofenceService } from '../services/geofence.service';
 import { AttendanceApiService } from '../services/attendance-api.service';
 import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
+import { SharedApi } from '../services/shared-api';
 
 @Component({
   selector: 'app-home',
@@ -37,6 +38,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   private deviceInfoWindow: any;
   private devicePulseOverlay: any;
   private google: any;
+  userImage: string = 'https://ionicframework.com/docs/img/demos/avatar.svg';
 
   constructor(
     private geolocationService: GeolocationService,
@@ -47,18 +49,33 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     private toastController: ToastController,
     private ngZone: NgZone,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private SharedApiService: SharedApi
   ) { }
 
   async ngOnInit() {
-    const claims = this.authService.getIdentityClaims();
-    if (claims) {
+    // const token = this.authService.getTokenFromCookie();
+    const claims = await this.authService.getIdentityClaims();
+    if ((claims as any).given_name) {
+      let givenName: any = (claims as any).given_name ? (claims as any).given_name : "";
+      let familyName = (claims as any).family_name ? (claims as any).family_name : "";
+      this.username = `${givenName} ${familyName}`.trim();
 
-      console.log("_________________", claims)
-      this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
+
+      let loginUserDetails: any = await this.SharedApiService.fetchLoginDetails();
+      if (loginUserDetails?.profile_photo) {
+        let token: string = await this.authService.getAccessToken();
+        this.userImage = environment.CRM_API + 'viewdocument/' + loginUserDetails?.profile_photo + '?token=' + token;
+      }
+
+      // if (loginUserDetails?.company?.name) {
+      //   this.companyName = loginUserDetails?.company?.name;
+      // }
+
+
     }
 
-    this.selectedPerimeter = localStorage.getItem('selected_perimeter') as any;
+    this.selectedPerimeter = (localStorage.getItem('selected_perimeter') as any) || 'office';
 
     // Load last action state from history
     const storedHistory = localStorage.getItem('attendance_history');
@@ -268,8 +285,9 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if (this.selectedPerimeter === 'office' && !this.isWithinGeofence) {
-      await this.showToast('You must be within 10 meters of the office to check in.', 'danger');
+    if ((this.selectedPerimeter === 'office' || !this.selectedPerimeter) && !this.isWithinGeofence) {
+      const radius = this.geofenceService.getRadiusMeters();
+      await this.showToast(`You must be within ${radius} meters of the office to check in.`, 'danger');
       return;
     }
     await this.submitAttendance('check-in');
@@ -280,8 +298,9 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if (this.selectedPerimeter === 'office' && !this.isWithinGeofence) {
-      await this.showToast('You must be within 10 meters of the office to check out.', 'danger');
+    if ((this.selectedPerimeter === 'office' || !this.selectedPerimeter) && !this.isWithinGeofence) {
+      const radius = this.geofenceService.getRadiusMeters();
+      await this.showToast(`You must be within ${radius} meters of the office to check out.`, 'danger');
       return;
     }
     await this.submitAttendance('check-out');

@@ -1,6 +1,8 @@
 import { Component, OnInit, Input, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth';
+import { SharedApi } from 'src/app/services/shared-api';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-header',
@@ -12,22 +14,33 @@ export class HeaderComponent implements OnInit {
 
   username = 'Employee';
   companyName = 'Zeonix Technologies';
-  userImage = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+  userImage: string = 'https://ionicframework.com/docs/img/demos/avatar.svg';
 
   constructor(
     private authService: AuthService,
+    private SharedApiService: SharedApi,
     private router: Router,
     private ngZone: NgZone
-  ) {}
+  ) { }
 
-  ngOnInit() {
-    const claims = this.authService.getIdentityClaims();
-    if (claims) {
-      this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
-      this.companyName = (claims as any).company || (claims as any).organization || 'Zeonix Technologies';
-      if ((claims as any).picture) {
-        this.userImage = (claims as any).picture;
+  async ngOnInit() {
+    const claims = await this.authService.getIdentityClaims();
+    if ((claims as any).given_name) {
+
+      let givenName: any = (claims as any).given_name ? (claims as any).given_name : "";
+      let familyName = (claims as any).family_name ? (claims as any).family_name : "";
+      this.username = `${givenName} ${familyName}`.trim();
+
+      let loginUserDetails: any = await this.SharedApiService.fetchLoginDetails();
+      if (loginUserDetails?.profile_photo) {
+        let token: string = await this.authService.getAccessToken();
+        this.userImage = environment.CRM_API + 'viewdocument/' + loginUserDetails?.profile_photo + '?token=' + token;
       }
+
+      if (loginUserDetails?.company?.name) {
+        this.companyName = loginUserDetails?.company?.name;
+      }
+
     }
   }
 
