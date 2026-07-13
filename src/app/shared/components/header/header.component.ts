@@ -12,6 +12,7 @@ import { AlertController } from '@ionic/angular';
 })
 export class HeaderComponent implements OnInit {
   @Input() contentId: string = 'home-content';
+  @Input() showBackButton: boolean = false;
 
   username = 'Employee';
   companyName = 'Zeonix Technologies';
@@ -111,5 +112,9 @@ export class HeaderComponent implements OnInit {
     });
 
     await alert.present();
+  }
+
+  goBack() {
+    this.router.navigate(['/home']);
   }
 }

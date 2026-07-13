@@ -50,6 +50,11 @@
 
 <ion-header [translucent]="true">
   <ion-toolbar color="primary">
+    <ion-buttons slot="start" *ngIf="showBackButton">
+      <ion-button (click)="goBack()" style="--color: #ffffff; color: #ffffff;">
+        <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
     <ion-title>
       <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="header-logo" />
     </ion-title>
