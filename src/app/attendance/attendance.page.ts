@@ -2,10 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 
 export interface HistoryEntry {
-  type: 'check-in' | 'check-out';
+  type: 'check-in' | 'check-out' | 'leave';
   timestamp: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   mode?: string;
 }
 
@@ -14,6 +14,8 @@ export interface DateGroupedAttendance {
   checkIn?: HistoryEntry;
   checkOut?: HistoryEntry;
   isToday?: boolean;
+  isLeave?: boolean;
+  leaveEntry?: HistoryEntry;
 }
 
 @Component({
@@ -52,7 +54,7 @@ export class AttendancePage implements OnInit {
   loadHistory() {
     let history: HistoryEntry[] = [];
     const stored = localStorage.getItem('attendance_history');
-    const hasRichMock = localStorage.getItem('attendance_history_rich');
+    const hasRichMock = localStorage.getItem('attendance_history_rich_leave');
     
     if (stored && hasRichMock) {
       history = JSON.parse(stored);
@@ -60,7 +62,7 @@ export class AttendancePage implements OnInit {
       // Prepopulate with mock data if history is empty or old
       history = this.generateMockHistory();
       localStorage.setItem('attendance_history', JSON.stringify(history));
-      localStorage.setItem('attendance_history_rich', 'true');
+      localStorage.setItem('attendance_history_rich_leave', 'true');
     }
 
     // Sort by timestamp descending
@@ -190,6 +192,9 @@ export class AttendancePage implements OnInit {
         if (!groups[key].checkOut || new Date(entry.timestamp).getTime() > new Date(groups[key].checkOut!.timestamp).getTime()) {
           groups[key].checkOut = entry;
         }
+      } else if (entry.type === 'leave') {
+        groups[key].isLeave = true;
+        groups[key].leaveEntry = entry;
       }
     });
 
@@ -225,7 +230,18 @@ export class AttendancePage implements OnInit {
     for (let i = 0; i < 7; i++) {
       const date = new Date(baseDate);
       date.setDate(baseDate.getDate() - i);
-      this.addMockRecordPair(records, date);
+      const day = date.getDay();
+      if (day === 0 || day === 6) continue;
+
+      if (i === 3) {
+        records.push({
+          type: 'leave',
+          timestamp: date.toISOString(),
+          mode: 'Sick Leave'
+        });
+      } else {
+        this.addMockRecordPair(records, date);
+      }
     }
 
     // 2. A few records per month for the last 18 months
@@ -233,13 +249,27 @@ export class AttendancePage implements OnInit {
     start.setMonth(baseDate.getMonth() - 18);
     
     let current = new Date(start);
+    let mockLeaveCounter = 0;
     while (current < baseDate) {
       // Don't duplicate the current month since we already have daily entries
       if (current.getMonth() !== baseDate.getMonth() || current.getFullYear() !== baseDate.getFullYear()) {
         // Add 2 random working days in this month
         for (let j = 0; j < 2; j++) {
           const mockDate = new Date(current.getFullYear(), current.getMonth(), 10 + j * 7);
-          this.addMockRecordPair(records, mockDate);
+          const day = mockDate.getDay();
+          if (day === 0 || day === 6) continue;
+
+          // Occasionally add a Leave entry in past months
+          if (j === 1 && mockLeaveCounter % 4 === 0) {
+            records.push({
+              type: 'leave',
+              timestamp: mockDate.toISOString(),
+              mode: mockLeaveCounter % 8 === 0 ? 'Casual Leave' : 'Privilege Leave'
+            });
+          } else {
+            this.addMockRecordPair(records, mockDate);
+          }
+          mockLeaveCounter++;
         }
       }
       current.setMonth(current.getMonth() + 1);

@@ -298,11 +298,6 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if ((this.selectedPerimeter === 'office' || !this.selectedPerimeter) && !this.isWithinGeofence) {
-      const radius = this.geofenceService.getRadiusMeters();
-      await this.showToast(`You must be within ${radius} meters of the office to check out.`, 'danger');
-      return;
-    }
     await this.submitAttendance('check-out');
   }
 

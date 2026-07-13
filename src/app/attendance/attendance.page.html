@@ -114,7 +114,8 @@
         <span class="today-badge" *ngIf="record.isToday">Today</span>
       </div>
 
-      <div class="card-content-grid">
+      <!-- Regular Work Day (Not Leave) -->
+      <div class="card-content-grid" *ngIf="!record.isLeave">
         <!-- Check In Column -->
         <div class="log-column check-in-col">
           <div class="log-type-title">
@@ -124,7 +125,7 @@
           <div class="log-time" *ngIf="record.checkIn">
             {{ formatTime(record.checkIn.timestamp) }}
           </div>
-          <div class="log-coords" *ngIf="record.checkIn">
+          <div class="log-coords" *ngIf="record.checkIn && record.checkIn.latitude !== undefined && record.checkIn.longitude !== undefined">
             <ion-icon name="location-outline"></ion-icon>
             <span>{{ record.checkIn.latitude.toFixed(6) }}, {{ record.checkIn.longitude.toFixed(6) }}</span>
           </div>
@@ -150,7 +151,7 @@
           <div class="log-time" *ngIf="record.checkOut">
             {{ formatTime(record.checkOut.timestamp) }}
           </div>
-          <div class="log-coords" *ngIf="record.checkOut">
+          <div class="log-coords" *ngIf="record.checkOut && record.checkOut.latitude !== undefined && record.checkOut.longitude !== undefined">
             <ion-icon name="location-outline"></ion-icon>
             <span>{{ record.checkOut.latitude.toFixed(6) }}, {{ record.checkOut.longitude.toFixed(6) }}</span>
           </div>
@@ -163,6 +164,18 @@
             -- : --
           </div>
         </div>
+      </div>
+
+      <!-- On Leave Day -->
+      <div class="leave-card-content" *ngIf="record.isLeave">
+        <div class="leave-icon-wrapper">
+          <ion-icon name="calendar-outline"></ion-icon>
+        </div>
+        <div class="leave-info">
+          <span class="leave-title">{{ record.leaveEntry?.mode || 'On Leave' }}</span>
+          <span class="leave-subtitle">Full day leave approved</span>
+        </div>
+        <span class="leave-badge">{{ record.leaveEntry?.mode || 'Leave' }}</span>
       </div>
     </div>
 

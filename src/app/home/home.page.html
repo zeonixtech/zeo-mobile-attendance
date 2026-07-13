@@ -81,15 +81,15 @@
   </div>
 
   <div class="button-container">
-    <ion-button expand="block" color="success"
-      [disabled]="((selectedPerimeter === 'office' || !selectedPerimeter) && !isWithinGeofence) || isLoading || !currentPosition"
+    <ion-button *ngIf="lastAction !== 'check-in'" expand="block" color="success"
+      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
       (click)="onCheckIn()" class="action-button">
       <ion-icon name="log-in-outline" slot="start"></ion-icon>
       Check In
     </ion-button>
 
-    <ion-button expand="block" color="danger"
-      [disabled]="((selectedPerimeter === 'office' || !selectedPerimeter) && !isWithinGeofence) || isLoading || !currentPosition"
+    <ion-button *ngIf="lastAction === 'check-in'" expand="block" color="danger"
+      [disabled]="isLoading || !currentPosition"
       (click)="onCheckOut()" class="action-button">
       <ion-icon name="log-out-outline" slot="start"></ion-icon>
       Check Out
