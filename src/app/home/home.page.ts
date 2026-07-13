@@ -29,6 +29,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
   mapError = false;
   locationPermissionGranted = false;
   selectedPerimeter: 'office' | 'field_duty' | 'remote' | null = null;
+  lastCheckInTime: string | null = null;
 
   private positionSub!: Subscription;
   private map: any;
@@ -85,6 +86,15 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
         if (history.length > 0) {
           history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           this.lastAction = history[0].type;
+          
+          if (this.lastAction === 'check-in') {
+            const lastCheckIn = history
+              .filter((a: any) => a.type === 'check-in')
+              .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            if (lastCheckIn) {
+              this.lastCheckInTime = lastCheckIn.timestamp;
+            }
+          }
         }
       } catch (e) {
         console.error('Error loading last action from history:', e);
@@ -319,6 +329,13 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
                   this.isLoading = false;
                   this.lastAction = type;
                   this.saveToHistory(type, modeStr);
+                  
+                  if (type === 'check-in') {
+                    this.lastCheckInTime = new Date().toISOString();
+                  } else {
+                    this.lastCheckInTime = null;
+                  }
+
                   const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
                   await this.showToast(msg, 'success');
                 },
@@ -372,5 +389,24 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     } catch (e) {
       console.error('Error saving history to localStorage:', e);
     }
+  }
+
+  formatCheckInTime(isoString: string): string {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  }
+
+  formatCheckInDate(isoString: string): string {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
   }
 }

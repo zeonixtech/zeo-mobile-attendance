@@ -80,23 +80,38 @@
     <span>Fetching coordinates...</span>
   </div>
 
+  <div class="check-in-info-card" *ngIf="lastAction === 'check-in' && lastCheckInTime">
+    <div class="info-header">
+      <ion-icon name="checkmark-circle"></ion-icon>
+      <span class="info-title">Active Session</span>
+    </div>
+    <div class="info-body">
+      <div class="info-item">
+        <span class="info-label">Check-in Time</span>
+        <span class="info-value">{{ formatCheckInTime(lastCheckInTime) }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Check-in Date</span>
+        <span class="info-value">{{ formatCheckInDate(lastCheckInTime) }}</span>
+      </div>
+    </div>
+  </div>
+
   <div class="button-container">
     <ion-button *ngIf="lastAction !== 'check-in'" expand="block" color="success"
-      [disabled]="!isWithinGeofence || isLoading || !currentPosition"
-      (click)="onCheckIn()" class="action-button">
+      [disabled]="!isWithinGeofence || isLoading || !currentPosition" (click)="onCheckIn()" class="action-button">
       <ion-icon name="log-in-outline" slot="start"></ion-icon>
       Check In
     </ion-button>
 
     <ion-button *ngIf="lastAction === 'check-in'" expand="block" color="danger"
-      [disabled]="isLoading || !currentPosition"
-      (click)="onCheckOut()" class="action-button">
+      [disabled]="isLoading || !currentPosition" (click)="onCheckOut()" class="action-button">
       <ion-icon name="log-out-outline" slot="start"></ion-icon>
       Check Out
     </ion-button>
   </div>
 
-  <div class="device-info-card" *ngIf="deviceInfo">
+  <!-- <div class="device-info-card" *ngIf="deviceInfo">
     <ion-list-header>
       <ion-label>
         <ion-icon name="phone-portrait-outline"></ion-icon>
@@ -119,13 +134,13 @@
       <ion-label>Platform</ion-label>
       <ion-text slot="end">{{ deviceInfo.platform }}</ion-text>
     </ion-item>
-  </div>
+  </div> -->
 
-  <div class="last-action" *ngIf="lastAction">
+  <!-- <div class="last-action" *ngIf="lastAction">
     <ion-badge [color]="lastAction === 'check-in' ? 'success' : 'danger'">
       Last: {{ lastAction === 'check-in' ? 'Checked In' : 'Checked Out' }}
     </ion-badge>
-  </div>
+  </div> -->
 
   <ion-loading [isOpen]="isLoading" message="Submitting attendance..." spinner="crescent"></ion-loading>
 </ion-content>
