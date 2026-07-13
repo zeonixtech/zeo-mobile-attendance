@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth';
 import { SharedApi } from 'src/app/services/shared-api';
 import { environment } from 'src/environments/environment';
+import { AlertController } from '@ionic/angular';
 
 @Component({
   selector: 'app-header',
@@ -20,7 +21,8 @@ export class HeaderComponent implements OnInit {
     private authService: AuthService,
     private SharedApiService: SharedApi,
     private router: Router,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private alertController: AlertController
   ) { }
 
   async ngOnInit() {
@@ -74,19 +76,40 @@ export class HeaderComponent implements OnInit {
 
   async logout() {
     console.log('HeaderComponent: logout clicked');
-    try {
-      await this.authService.logout();
-      console.log('HeaderComponent: authService.logout completed');
-      this.ngZone.run(() => {
-        console.log('HeaderComponent: Navigating to /auth/login');
-        this.router.navigate(['/auth/login']).then(nav => {
-          console.log('HeaderComponent: Navigation outcome:', nav);
-        }).catch(err => {
-          console.error('HeaderComponent: Navigation error:', err);
-        });
-      });
-    } catch (e) {
-      console.error('HeaderComponent: logout error', e);
-    }
+    const alert = await this.alertController.create({
+      header: 'Confirm Logout',
+      message: 'Are you sure you want to logout?',
+      backdropDismiss: false,
+      buttons: [
+        {
+          text: 'No',
+          role: 'cancel',
+          handler: () => {
+            console.log('Logout cancelled');
+          }
+        },
+        {
+          text: 'Yes',
+          handler: async () => {
+            try {
+              await this.authService.logout();
+              console.log('HeaderComponent: authService.logout completed');
+              this.ngZone.run(() => {
+                console.log('HeaderComponent: Navigating to /auth/login');
+                this.router.navigate(['/auth/login']).then(nav => {
+                  console.log('HeaderComponent: Navigation outcome:', nav);
+                }).catch(err => {
+                  console.error('HeaderComponent: Navigation error:', err);
+                });
+              });
+            } catch (e) {
+              console.error('HeaderComponent: logout error', e);
+            }
+          }
+        }
+      ]
+    });
+
+    await alert.present();
   }
 }

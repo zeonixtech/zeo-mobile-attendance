@@ -23,13 +23,17 @@ export class SelectOptionPage implements OnInit {
     private zone: NgZone,
     private alertController: AlertController,
     private geolocationService: GeolocationService
-  ) {}
+  ) { }
 
-  ngOnInit() {
-    const claims = this.authService.getIdentityClaims();
-    if (claims) {
-      this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
+  async ngOnInit() {
+    const claims = await this.authService.getIdentityClaims();
+    if ((claims as any).given_name) {
+      let givenName: any = (claims as any).given_name ? (claims as any).given_name : "";
+      let familyName = (claims as any).family_name ? (claims as any).family_name : "";
+      this.username = `${givenName} ${familyName}`.trim();
+      // this.username = (claims as any).name || (claims as any).preferred_username || (claims as any).sub || 'Employee';
     }
+
 
     this.route.queryParams.subscribe(params => {
       this.isSwitching = params['switching'] === 'true';
@@ -80,7 +84,7 @@ export class SelectOptionPage implements OnInit {
     }
 
     localStorage.setItem('selected_perimeter', this.selectedMode);
-    
+
     // Simulate a brief loading transition for premium experience
     setTimeout(() => {
       this.isLoading = false;
