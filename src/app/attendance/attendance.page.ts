@@ -13,6 +13,7 @@ export interface DateGroupedAttendance {
   displayDate: string; // e.g. "Monday, July 01, 2026"
   checkIn?: HistoryEntry;
   checkOut?: HistoryEntry;
+  isToday?: boolean;
 }
 
 @Component({
@@ -23,6 +24,24 @@ export interface DateGroupedAttendance {
 })
 export class AttendancePage implements OnInit {
   groupedRecords: DateGroupedAttendance[] = [];
+  allHistoryEntries: HistoryEntry[] = [];
+
+  pageSize: number = 8;
+  displayedCount: number = 8;
+  allGroupedRecords: DateGroupedAttendance[] = [];
+  infiniteScrollDisabled: boolean = false;
+
+  filterType: 'weekly' | 'monthly' | 'yearly' | 'custom' = 'weekly';
+  filterMonth: number = new Date().getMonth();
+  filterYear: number = new Date().getFullYear();
+  filterStartDate: string = '';
+  filterEndDate: string = '';
+
+  months: string[] = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  availableYears: number[] = [];
 
   constructor(private router: Router) {}
 
@@ -33,20 +52,115 @@ export class AttendancePage implements OnInit {
   loadHistory() {
     let history: HistoryEntry[] = [];
     const stored = localStorage.getItem('attendance_history');
+    const hasRichMock = localStorage.getItem('attendance_history_rich');
     
-    if (stored) {
+    if (stored && hasRichMock) {
       history = JSON.parse(stored);
     } else {
-      // Prepopulate with mock data if history is empty
+      // Prepopulate with mock data if history is empty or old
       history = this.generateMockHistory();
       localStorage.setItem('attendance_history', JSON.stringify(history));
+      localStorage.setItem('attendance_history_rich', 'true');
     }
 
     // Sort by timestamp descending
     history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    this.allHistoryEntries = history;
 
+    // Dynamically calculate years present in data
+    const years = history.map(entry => new Date(entry.timestamp).getFullYear());
+    this.availableYears = Array.from(new Set(years)).sort((a, b) => b - a);
+    
+    // Fallback if availableYears is empty
+    if (this.availableYears.length === 0) {
+      this.availableYears = [new Date().getFullYear()];
+    }
+
+    this.applyFilters();
+  }
+
+  getCurrentWeekBounds() {
+    const today = new Date();
+    const day = today.getDay();
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+    const start = new Date(today.setDate(diff));
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
+  applyFilters() {
+    let filtered = [...this.allHistoryEntries];
+
+    if (this.filterType === 'weekly') {
+      const { start, end } = this.getCurrentWeekBounds();
+      filtered = filtered.filter(entry => {
+        const entryTime = new Date(entry.timestamp).getTime();
+        return entryTime >= start.getTime() && entryTime <= end.getTime();
+      });
+    } else if (this.filterType === 'monthly') {
+      filtered = filtered.filter(entry => {
+        const date = new Date(entry.timestamp);
+        return date.getMonth() === Number(this.filterMonth) && date.getFullYear() === Number(this.filterYear);
+      });
+    } else if (this.filterType === 'yearly') {
+      filtered = filtered.filter(entry => {
+        const date = new Date(entry.timestamp);
+        return date.getFullYear() === Number(this.filterYear);
+      });
+    } else if (this.filterType === 'custom') {
+      if (this.filterStartDate) {
+        const start = new Date(this.filterStartDate);
+        start.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(entry => new Date(entry.timestamp) >= start);
+      }
+      if (this.filterEndDate) {
+        const end = new Date(this.filterEndDate);
+        end.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(entry => new Date(entry.timestamp) <= end);
+      }
+    }
+
+    this.groupRecords(filtered);
+  }
+
+  getFilteredRecordsCount(): number {
+    let count = 0;
+    this.groupedRecords.forEach(r => {
+      if (r.checkIn) count++;
+      if (r.checkOut) count++;
+    });
+    return count;
+  }
+
+  formatDateString(dateStr: string): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  resetFilters() {
+    this.filterType = 'weekly';
+    this.filterStartDate = '';
+    this.filterEndDate = '';
+    this.filterMonth = new Date().getMonth();
+    this.filterYear = new Date().getFullYear();
+    this.applyFilters();
+  }
+
+  groupRecords(history: HistoryEntry[]) {
     // Group by Date
     const groups: { [key: string]: DateGroupedAttendance } = {};
+
+    const localToday = new Date();
+    const year = localToday.getFullYear();
+    const month = String(localToday.getMonth() + 1).padStart(2, '0');
+    const day = String(localToday.getDate()).padStart(2, '0');
+    const todayKey = `${year}-${month}-${day}`;
 
     history.forEach((entry) => {
       const dateObj = new Date(entry.timestamp);
@@ -61,7 +175,8 @@ export class AttendancePage implements OnInit {
           day: 'numeric' 
         };
         groups[key] = {
-          displayDate: dateObj.toLocaleDateString('en-US', options)
+          displayDate: dateObj.toLocaleDateString('en-US', options),
+          isToday: key === todayKey
         };
       }
 
@@ -79,46 +194,90 @@ export class AttendancePage implements OnInit {
     });
 
     // Convert map to sorted array (most recent first)
-    this.groupedRecords = Object.keys(groups)
+    this.allGroupedRecords = Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
       .map(key => groups[key]);
+
+    // Reset pagination to first page
+    this.displayedCount = this.pageSize;
+    this.groupedRecords = this.allGroupedRecords.slice(0, this.displayedCount);
+    this.infiniteScrollDisabled = this.displayedCount >= this.allGroupedRecords.length;
+  }
+
+  loadMore(event: any) {
+    setTimeout(() => {
+      this.displayedCount += this.pageSize;
+      this.groupedRecords = this.allGroupedRecords.slice(0, this.displayedCount);
+      
+      event.target.complete();
+
+      if (this.displayedCount >= this.allGroupedRecords.length) {
+        this.infiniteScrollDisabled = true;
+      }
+    }, 800);
   }
 
   private generateMockHistory(): HistoryEntry[] {
     const records: HistoryEntry[] = [];
     const baseDate = new Date();
     
-    // Create checkin/checkout for the past 3 days
-    for (let i = 1; i <= 3; i++) {
-      const date = new Date();
+    // 1. Daily for the last 7 days:
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(baseDate);
       date.setDate(baseDate.getDate() - i);
-      
-      // Check in at 9:00 AM + random minutes
-      const checkInTime = new Date(date);
-      checkInTime.setHours(9, Math.floor(Math.random() * 30), 0);
+      this.addMockRecordPair(records, date);
+    }
 
-      // Check out at 6:00 PM + random minutes
-      const checkOutTime = new Date(date);
-      checkOutTime.setHours(18, Math.floor(Math.random() * 30), 0);
-
-      records.push({
-        type: 'check-in',
-        timestamp: checkInTime.toISOString(),
-        latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
-        mode: 'Office'
-      });
-
-      records.push({
-        type: 'check-out',
-        timestamp: checkOutTime.toISOString(),
-        latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-        longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
-        mode: 'Office'
-      });
+    // 2. A few records per month for the last 18 months
+    const start = new Date(baseDate);
+    start.setMonth(baseDate.getMonth() - 18);
+    
+    let current = new Date(start);
+    while (current < baseDate) {
+      // Don't duplicate the current month since we already have daily entries
+      if (current.getMonth() !== baseDate.getMonth() || current.getFullYear() !== baseDate.getFullYear()) {
+        // Add 2 random working days in this month
+        for (let j = 0; j < 2; j++) {
+          const mockDate = new Date(current.getFullYear(), current.getMonth(), 10 + j * 7);
+          this.addMockRecordPair(records, mockDate);
+        }
+      }
+      current.setMonth(current.getMonth() + 1);
     }
 
     return records;
+  }
+
+  private addMockRecordPair(records: HistoryEntry[], date: Date) {
+    const day = date.getDay();
+    if (day === 0 || day === 6) return; // Skip weekends
+
+    // Check-in at 9:00 AM + random minutes
+    const checkInTime = new Date(date);
+    checkInTime.setHours(9, Math.floor(Math.random() * 30), 0);
+
+    // Check-out at 6:00 PM + random minutes
+    const checkOutTime = new Date(date);
+    checkOutTime.setHours(18, Math.floor(Math.random() * 30), 0);
+
+    const modes = ['Office', 'Field Duty', 'Remote Work'];
+    const mode = modes[Math.floor(Math.random() * modes.length)];
+
+    records.push({
+      type: 'check-in',
+      timestamp: checkInTime.toISOString(),
+      latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
+      longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
+      mode: mode
+    });
+
+    records.push({
+      type: 'check-out',
+      timestamp: checkOutTime.toISOString(),
+      latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
+      longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
+      mode: mode
+    });
   }
 
   goToHome() {

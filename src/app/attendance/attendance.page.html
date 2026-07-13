@@ -9,6 +9,97 @@
     </div>
   </div>
 
+  <div class="filter-card">
+    <div class="filter-header">
+      <ion-icon name="funnel-outline" class="filter-icon"></ion-icon>
+      <span class="filter-title">Filter History</span>
+    </div>
+
+    <ion-segment [(ngModel)]="filterType" (ionChange)="applyFilters()" mode="ios" class="custom-segment">
+      <ion-segment-button value="weekly">
+        <ion-label>Weekly</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="monthly">
+        <ion-label>Monthly</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="yearly">
+        <ion-label>Yearly</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="custom">
+        <ion-label>Range</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+
+    <!-- Monthly Controls -->
+    <div class="filter-controls-row animate-fade-in" *ngIf="filterType === 'monthly'">
+      <div class="control-group">
+        <label class="control-label">Month</label>
+        <div class="select-wrapper">
+          <select [(ngModel)]="filterMonth" (change)="applyFilters()" class="custom-select">
+            <option *ngFor="let m of months; let idx = index" [value]="idx">{{ m }}</option>
+          </select>
+          <ion-icon name="chevron-down-outline" class="select-arrow"></ion-icon>
+        </div>
+      </div>
+      <div class="control-group">
+        <label class="control-label">Year</label>
+        <div class="select-wrapper">
+          <select [(ngModel)]="filterYear" (change)="applyFilters()" class="custom-select">
+            <option *ngFor="let y of availableYears" [value]="y">{{ y }}</option>
+          </select>
+          <ion-icon name="chevron-down-outline" class="select-arrow"></ion-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Yearly Controls -->
+    <div class="filter-controls-row animate-fade-in" *ngIf="filterType === 'yearly'">
+      <div class="control-group full-width">
+        <label class="control-label">Select Year</label>
+        <div class="select-wrapper">
+          <select [(ngModel)]="filterYear" (change)="applyFilters()" class="custom-select">
+            <option *ngFor="let y of availableYears" [value]="y">{{ y }}</option>
+          </select>
+          <ion-icon name="chevron-down-outline" class="select-arrow"></ion-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Range Controls -->
+    <div class="filter-controls-row animate-fade-in" *ngIf="filterType === 'custom'">
+      <div class="control-group">
+        <label class="control-label">Start Date</label>
+        <input type="date" [(ngModel)]="filterStartDate" (change)="applyFilters()" class="custom-date-input" />
+      </div>
+      <div class="control-group">
+        <label class="control-label">End Date</label>
+        <input type="date" [(ngModel)]="filterEndDate" (change)="applyFilters()" class="custom-date-input" />
+      </div>
+    </div>
+
+    <!-- Filter Summary Badge -->
+    <div class="filter-summary-row animate-fade-in">
+      <div class="summary-badge">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <span>
+          Showing {{ getFilteredRecordsCount() }} records
+          <span *ngIf="filterType === 'weekly'">for this week</span>
+          <span *ngIf="filterType === 'monthly'">for {{ months[filterMonth] }} {{ filterYear }}</span>
+          <span *ngIf="filterType === 'yearly'">for year {{ filterYear }}</span>
+          <span *ngIf="filterType === 'custom' && (filterStartDate || filterEndDate)">
+            <span *ngIf="filterStartDate && filterEndDate">from {{ formatDateString(filterStartDate) }} to {{ formatDateString(filterEndDate) }}</span>
+            <span *ngIf="filterStartDate && !filterEndDate">since {{ formatDateString(filterStartDate) }}</span>
+            <span *ngIf="!filterStartDate && filterEndDate">before {{ formatDateString(filterEndDate) }}</span>
+          </span>
+        </span>
+      </div>
+      <ion-button fill="clear" size="small" color="danger" class="clear-filter-btn" (click)="resetFilters()" *ngIf="filterType !== 'weekly' || filterStartDate || filterEndDate">
+        <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+        Reset
+      </ion-button>
+    </div>
+  </div>
+
   <div class="history-list-container">
     <div *ngIf="groupedRecords.length === 0" class="no-records-state">
       <ion-icon name="calendar-outline"></ion-icon>
@@ -16,10 +107,11 @@
       <p>Your check-in and check-out history will appear here.</p>
     </div>
 
-    <div class="history-card" *ngFor="let record of groupedRecords">
+    <div class="history-card" [class.today-highlight]="record.isToday" *ngFor="let record of groupedRecords">
       <div class="card-date-header">
         <ion-icon name="calendar-clear-outline"></ion-icon>
         <span>{{ record.displayDate }}</span>
+        <span class="today-badge" *ngIf="record.isToday">Today</span>
       </div>
 
       <div class="card-content-grid">
@@ -73,6 +165,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Infinite Scroll / Lazy Loading -->
+    <ion-infinite-scroll (ionInfinite)="loadMore($event)" [disabled]="infiniteScrollDisabled">
+      <ion-infinite-scroll-content loadingSpinner="crescent" loadingText="Loading more attendance logs...">
+      </ion-infinite-scroll-content>
+    </ion-infinite-scroll>
   </div>
 </ion-content>
 
