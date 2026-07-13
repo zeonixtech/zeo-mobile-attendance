@@ -24,7 +24,6 @@ export class Utility {
     let token: any = '';
     token = await this.authService.getAccessToken();
 
-    console.log("****************", token)
     if (token) {
       // token = await JSON.parse(this.sharedService.decrypt(token)); //JSON.parse(token);
       token = 'Bearer ' + token;
