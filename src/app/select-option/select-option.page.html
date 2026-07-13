@@ -15,12 +15,14 @@
   <div class="cards-container">
     <!-- Option 1: Office (Inside Perimeter) -->
     <div class="mode-card" [class.selected]="selectedMode === 'office'" (click)="selectMode('office')">
-      <div class="badge inside">Inside Perimeter</div>
       <div class="card-image-container">
         <img src="assets/images/office_perimeter.png" alt="Office Work" class="mode-image" />
       </div>
       <div class="card-details">
-        <h2 class="card-title">Office Work</h2>
+        <div class="card-header-row">
+          <h2 class="card-title">Office Work</h2>
+          <span class="badge inside">Inside Perimeter</span>
+        </div>
         <p class="card-description">Verify attendance while physically working at the office office range.</p>
       </div>
       <div class="selection-indicator">
@@ -30,12 +32,14 @@
 
     <!-- Option 2: Field Duty (Outside Perimeter) -->
     <div class="mode-card" [class.selected]="selectedMode === 'field_duty'" (click)="selectMode('field_duty')">
-      <div class="badge outside">Outside Perimeter</div>
       <div class="card-image-container">
         <img src="assets/images/field_duty.png" alt="Field Duty" class="mode-image" />
       </div>
       <div class="card-details">
-        <h2 class="card-title">Field Duty</h2>
+        <div class="card-header-row">
+          <h2 class="card-title">Field Duty</h2>
+          <span class="badge outside">Outside Perimeter</span>
+        </div>
         <p class="card-description">Record attendance while visiting clients, vendors, or on external assignments.</p>
       </div>
       <div class="selection-indicator">
@@ -45,12 +49,14 @@
 
     <!-- Option 3: Remote Work (Outside Perimeter) -->
     <div class="mode-card" [class.selected]="selectedMode === 'remote'" (click)="selectMode('remote')">
-      <div class="badge outside">Outside Perimeter</div>
       <div class="card-image-container">
         <img src="assets/images/remote_work.png" alt="Remote Work" class="mode-image" />
       </div>
       <div class="card-details">
-        <h2 class="card-title">Remote Work</h2>
+        <div class="card-header-row">
+          <h2 class="card-title">Remote Work</h2>
+          <span class="badge outside">Outside Perimeter</span>
+        </div>
         <p class="card-description">Record attendance when working from home or alternate locations.</p>
       </div>
       <div class="selection-indicator">
