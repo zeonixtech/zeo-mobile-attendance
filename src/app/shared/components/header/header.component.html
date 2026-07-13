@@ -1,4 +1,4 @@
-<ion-menu side="end" [contentId]="contentId">
+<ion-menu side="end" [contentId]="contentId" [menuId]="contentId + '-menu'">
   <ion-header class="ion-no-border">
     <ion-toolbar>
       <ion-buttons slot="end">
@@ -54,7 +54,7 @@
       <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="header-logo" />
     </ion-title>
     <ion-buttons slot="end">
-      <ion-menu-button></ion-menu-button>
+      <ion-menu-button [menu]="contentId + '-menu'"></ion-menu-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
