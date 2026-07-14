@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, NgZone } from '@angular/core';
-import { AlertController, ToastController } from '@ionic/angular';
+import { AlertController, ToastController, MenuController, ViewWillEnter } from '@ionic/angular';
 import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { GeolocationService, DevicePosition } from '../services/geolocation.service';
@@ -16,7 +16,7 @@ import { SharedApi } from '../services/shared-api';
   styleUrls: ['home.page.scss'],
   standalone: false,
 })
-export class HomePage implements OnInit, OnDestroy, AfterViewInit {
+export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   username = 'Employee';
@@ -51,8 +51,15 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit {
     private ngZone: NgZone,
     private authService: AuthService,
     private router: Router,
-    private SharedApiService: SharedApi
+    private SharedApiService: SharedApi,
+    private menuController: MenuController
   ) { }
+
+  async ionViewWillEnter() {
+    await this.menuController.enable(true, 'home-content-menu');
+    await this.menuController.enable(false, 'attendance-content-menu');
+    await this.menuController.close('home-content-menu');
+  }
 
   async ngOnInit() {
     // const token = this.authService.getTokenFromCookie();

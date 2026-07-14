@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { MenuController, ViewWillEnter } from '@ionic/angular';
 
 export interface HistoryEntry {
   type: 'check-in' | 'check-out' | 'leave';
@@ -24,7 +25,7 @@ export interface DateGroupedAttendance {
   styleUrls: ['./attendance.page.scss'],
   standalone: false,
 })
-export class AttendancePage implements OnInit {
+export class AttendancePage implements OnInit, ViewWillEnter {
   groupedRecords: DateGroupedAttendance[] = [];
   allHistoryEntries: HistoryEntry[] = [];
 
@@ -45,7 +46,16 @@ export class AttendancePage implements OnInit {
   ];
   availableYears: number[] = [];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private menuController: MenuController
+  ) {}
+
+  async ionViewWillEnter() {
+    await this.menuController.enable(true, 'attendance-content-menu');
+    await this.menuController.enable(false, 'home-content-menu');
+    await this.menuController.close('attendance-content-menu');
+  }
 
   ngOnInit() {
     this.loadHistory();

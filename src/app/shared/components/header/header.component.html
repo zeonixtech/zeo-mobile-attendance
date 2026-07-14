@@ -2,7 +2,7 @@
   <ion-header class="ion-no-border">
     <ion-toolbar>
       <ion-buttons slot="end">
-        <ion-menu-toggle>
+        <ion-menu-toggle [menu]="contentId + '-menu'">
           <ion-button color="medium">
             <ion-icon slot="icon-only" name="close-outline"></ion-icon>
           </ion-button>
@@ -31,14 +31,14 @@
     </div>
 
     <div class="menu-items-container">
-      <ion-menu-toggle auto-hide="false" *ngIf="!isCheckedIn() && selectedPerimeterName">
+      <ion-menu-toggle auto-hide="false" *ngIf="!isCheckedIn() && selectedPerimeterName" [menu]="contentId + '-menu'">
         <ion-item (click)="switchMode()" button detail="false" class="menu-switch-button">
           <ion-icon name="swap-horizontal-outline" slot="start"></ion-icon>
           <ion-label>Switch Attendance Mode</ion-label>
         </ion-item>
       </ion-menu-toggle>
 
-      <ion-menu-toggle auto-hide="false">
+      <ion-menu-toggle auto-hide="false" [menu]="contentId + '-menu'">
         <ion-item (click)="logout()" button detail="false" class="menu-logout-button">
           <ion-icon name="log-out-outline" slot="start"></ion-icon>
           <ion-label>Logout</ion-label>
