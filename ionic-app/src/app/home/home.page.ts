@@ -136,13 +136,13 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   private async loadGoogleMaps() {
     if ((window as any).google && (window as any).google.maps) {
       this.google = (window as any).google;
-      this.initMap();
+      await this.initMap();
       return;
     }
 
     try {
       this.google = await (window as any).__mapLoadPromise;
-      this.initMap();
+      await this.initMap();
     } catch (error) {
       console.error('Error loading Google Maps:', error);
       this.mapError = true;
@@ -150,7 +150,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     }
   }
 
-  private initMap() {
+  private async initMap() {
     if (!this.mapContainer || !this.google) return;
 
     const officeCoords = this.geofenceService.getOfficeCoordinates();
@@ -163,6 +163,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       streetViewControl: false,
       fullscreenControl: false,
       zoomControl: true,
+      mapId: 'DEMO_MAP_ID',
       styles: [
         {
           featureType: 'poi',
@@ -171,18 +172,35 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       ],
     });
 
-    this.officeMarker = new googleMaps.Marker({
+    let AdvancedMarkerElement = googleMaps.marker?.AdvancedMarkerElement;
+    if (!AdvancedMarkerElement) {
+      try {
+        const markerLib = await googleMaps.importLibrary('marker');
+        AdvancedMarkerElement = markerLib.AdvancedMarkerElement;
+      } catch (e) {
+        console.error('Failed to import marker library:', e);
+      }
+    }
+
+    if (!AdvancedMarkerElement) {
+      console.error('AdvancedMarkerElement is not available');
+      return;
+    }
+
+    const officeMarkerContent = document.createElement('div');
+    officeMarkerContent.style.width = '24px';
+    officeMarkerContent.style.height = '24px';
+    officeMarkerContent.style.backgroundColor = '#4285F4';
+    officeMarkerContent.style.borderRadius = '50%';
+    officeMarkerContent.style.border = '3px solid #ffffff';
+    officeMarkerContent.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    officeMarkerContent.style.boxSizing = 'border-box';
+
+    this.officeMarker = new AdvancedMarkerElement({
       position: officeCoords,
       map: this.map,
       title: 'Office Location',
-      icon: {
-        path: googleMaps.SymbolPath.CIRCLE,
-        scale: 12,
-        fillColor: '#4285F4',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 3,
-      },
+      content: officeMarkerContent,
       zIndex: 1,
     });
 
@@ -204,18 +222,20 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       strokeWeight: 2,
     });
 
-    this.deviceMarker = new googleMaps.Marker({
+    const deviceMarkerContent = document.createElement('div');
+    deviceMarkerContent.style.width = '28px';
+    deviceMarkerContent.style.height = '28px';
+    deviceMarkerContent.style.backgroundColor = '#1B7A2B';
+    deviceMarkerContent.style.borderRadius = '50%';
+    deviceMarkerContent.style.border = '4px solid #ffffff';
+    deviceMarkerContent.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    deviceMarkerContent.style.boxSizing = 'border-box';
+
+    this.deviceMarker = new AdvancedMarkerElement({
       position: officeCoords,
       map: this.map,
       title: 'Your Location',
-      icon: {
-        path: googleMaps.SymbolPath.CIRCLE,
-        scale: 14,
-        fillColor: '#1B7A2B',
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 4,
-      },
+      content: deviceMarkerContent,
       zIndex: 10,
     });
 
@@ -244,7 +264,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     };
 
     this.ngZone.run(() => {
-      this.deviceMarker.setPosition(devicePos);
+      this.deviceMarker.position = devicePos;
       this.map.panTo(devicePos);
 
       this.updateDeviceInfoWindow();
