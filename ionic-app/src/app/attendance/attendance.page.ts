@@ -12,6 +12,9 @@ export interface HistoryEntry {
 
 export interface DateGroupedAttendance {
   displayDate: string; // e.g. "Monday, July 01, 2026"
+  dayNumber: string; // e.g. "01"
+  monthShort: string; // e.g. "Jul"
+  dayShort: string; // e.g. "Mon"
   checkIn?: HistoryEntry;
   checkOut?: HistoryEntry;
   isToday?: boolean;
@@ -29,8 +32,8 @@ export class AttendancePage implements OnInit, ViewWillEnter {
   groupedRecords: DateGroupedAttendance[] = [];
   allHistoryEntries: HistoryEntry[] = [];
 
-  pageSize: number = 8;
-  displayedCount: number = 8;
+  pageSize: number = 10;
+  displayedCount: number = 10;
   allGroupedRecords: DateGroupedAttendance[] = [];
   infiniteScrollDisabled: boolean = false;
 
@@ -49,7 +52,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
   constructor(
     private router: Router,
     private menuController: MenuController
-  ) {}
+  ) { }
 
   async ionViewWillEnter() {
     await this.menuController.enable(true, 'attendance-content-menu');
@@ -65,9 +68,12 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     let history: HistoryEntry[] = [];
     const stored = localStorage.getItem('attendance_history');
     const hasRichMock = localStorage.getItem('attendance_history_rich_leave');
-    
+
     if (stored && hasRichMock) {
       history = JSON.parse(stored);
+      // Sort first to ensure history[0] is the latest entry
+      history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      this.fillGapInHistory(history);
     } else {
       // Prepopulate with mock data if history is empty or old
       history = this.generateMockHistory();
@@ -82,13 +88,44 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     // Dynamically calculate years present in data
     const years = history.map(entry => new Date(entry.timestamp).getFullYear());
     this.availableYears = Array.from(new Set(years)).sort((a, b) => b - a);
-    
+
     // Fallback if availableYears is empty
     if (this.availableYears.length === 0) {
       this.availableYears = [new Date().getFullYear()];
     }
 
     this.applyFilters();
+  }
+
+  private fillGapInHistory(history: HistoryEntry[]) {
+    if (history.length === 0) return;
+
+    const latestDate = new Date(history[0].timestamp);
+    if (isNaN(latestDate.getTime())) return;
+    latestDate.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (latestDate.getTime() < today.getTime()) {
+      const diffTime = today.getTime() - latestDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const newRecords: HistoryEntry[] = [];
+      for (let i = 1; i <= diffDays; i++) {
+        const date = new Date(latestDate);
+        date.setDate(latestDate.getDate() + i);
+        const day = date.getDay();
+        if (day === 0 || day === 6) continue; // Skip weekends
+
+        this.addMockRecordPair(newRecords, date);
+      }
+
+      if (newRecords.length > 0) {
+        history.push(...newRecords);
+        localStorage.setItem('attendance_history', JSON.stringify(history));
+      }
+    }
   }
 
   getCurrentWeekBounds() {
@@ -177,17 +214,23 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     history.forEach((entry) => {
       const dateObj = new Date(entry.timestamp);
       // Grouping key format: YYYY-MM-DD
-      const key = dateObj.toISOString().split('T')[0];
-      
+      const entryYear = dateObj.getFullYear();
+      const entryMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const entryDay = String(dateObj.getDate()).padStart(2, '0');
+      const key = `${entryYear}-${entryMonth}-${entryDay}`;
+
       if (!groups[key]) {
-        const options: Intl.DateTimeFormatOptions = { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+        const options: Intl.DateTimeFormatOptions = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         };
         groups[key] = {
           displayDate: dateObj.toLocaleDateString('en-US', options),
+          dayNumber: String(dateObj.getDate()).padStart(2, '0'),
+          monthShort: dateObj.toLocaleDateString('en-US', { month: 'short' }),
+          dayShort: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
           isToday: key === todayKey
         };
       }
@@ -223,7 +266,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     setTimeout(() => {
       this.displayedCount += this.pageSize;
       this.groupedRecords = this.allGroupedRecords.slice(0, this.displayedCount);
-      
+
       event.target.complete();
 
       if (this.displayedCount >= this.allGroupedRecords.length) {
@@ -235,7 +278,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
   private generateMockHistory(): HistoryEntry[] {
     const records: HistoryEntry[] = [];
     const baseDate = new Date();
-    
+
     // 1. Daily for the last 7 days:
     for (let i = 0; i < 7; i++) {
       const date = new Date(baseDate);
@@ -257,7 +300,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     // 2. A few records per month for the last 18 months
     const start = new Date(baseDate);
     start.setMonth(baseDate.getMonth() - 18);
-    
+
     let current = new Date(start);
     let mockLeaveCounter = 0;
     while (current < baseDate) {
