@@ -28,6 +28,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   mapLoaded = false;
   mapError = false;
   locationPermissionGranted = false;
+  isCheckingPermission = true;
   selectedPerimeter: 'office' | 'field_duty' | 'remote' | null = null;
   lastCheckInTime: string | null = null;
 
@@ -62,6 +63,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   }
 
   async ngOnInit() {
+    this.isCheckingPermission = true;
     // const token = this.authService.getTokenFromCookie();
     const claims = await this.authService.getIdentityClaims();
     if ((claims as any).given_name) {
@@ -93,7 +95,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         if (history.length > 0) {
           history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
           this.lastAction = history[0].type;
-          
+
           if (this.lastAction === 'check-in') {
             const lastCheckIn = history
               .filter((a: any) => a.type === 'check-in')
@@ -121,8 +123,14 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       }
     });
 
-    await this.geolocationService.startWatching();
-    this.locationPermissionGranted = this.geolocationService.isPermissionGranted();
+    try {
+      await this.geolocationService.startWatching();
+    } catch (e) {
+      console.error('Error starting location watch:', e);
+    } finally {
+      this.locationPermissionGranted = this.geolocationService.isPermissionGranted();
+      this.isCheckingPermission = false;
+    }
   }
 
   ngAfterViewInit() {
@@ -356,7 +364,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
                   this.isLoading = false;
                   this.lastAction = type;
                   this.saveToHistory(type, modeStr);
-                  
+
                   if (type === 'check-in') {
                     this.lastCheckInTime = new Date().toISOString();
                   } else {

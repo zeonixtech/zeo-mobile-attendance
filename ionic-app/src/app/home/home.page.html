@@ -10,12 +10,21 @@
     </ion-toolbar>
   </ion-header> -->
 
-  <div class="permission-banner" *ngIf="!locationPermissionGranted">
-    <ion-icon name="warning-outline"></ion-icon>
-    <div class="permission-text">
-      <strong>Location Permission Required</strong>
-      <p>Please grant location permission to use attendance features.</p>
-    </div>
+  <div class="permission-banner" [class.loading]="isCheckingPermission" *ngIf="isCheckingPermission || !locationPermissionGranted">
+    <ng-container *ngIf="isCheckingPermission">
+      <ion-spinner name="crescent"></ion-spinner>
+      <div class="permission-text">
+        <strong>Checking Location Permission...</strong>
+        <p>Please wait while we verify location permission.</p>
+      </div>
+    </ng-container>
+    <ng-container *ngIf="!isCheckingPermission && !locationPermissionGranted">
+      <ion-icon name="warning-outline"></ion-icon>
+      <div class="permission-text">
+        <strong>Location Permission Required</strong>
+        <p>Please grant location permission to use attendance features.</p>
+      </div>
+    </ng-container>
   </div>
 
   <div class="user-card">

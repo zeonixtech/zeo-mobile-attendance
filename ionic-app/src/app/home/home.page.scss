@@ -26,9 +26,25 @@ ion-title {
   border: 1px solid #ffc107;
   border-radius: 10px;
   color: #856404;
+  transition: all 0.3s ease-in-out;
+
+  &.loading {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
+
+    ion-spinner {
+      --color: #0369a1;
+    }
+  }
 
   ion-icon {
     font-size: 28px;
+    margin-right: 12px;
+    flex-shrink: 0;
+  }
+
+  ion-spinner {
     margin-right: 12px;
     flex-shrink: 0;
   }
