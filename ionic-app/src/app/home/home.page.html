@@ -28,15 +28,17 @@
   </div>
 
   <div class="user-card">
-    <!-- <ion-icon name="person-circle-outline" class="user-avatar"></ion-icon> -->
-    <img [src]="userImage" class="user-avatar" />
+    <div class="avatar-ring">
+      <img [src]="userImage" class="user-avatar" />
+    </div>
 
     <div class="user-info">
+      <span class="welcome-prefix">Hello,</span>
       <h2 class="username">
         {{ username }}
       </h2>
       <p class="status" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence">
-        <ion-icon [name]="isWithinGeofence ? 'checkmark-circle' : 'close-circle'"></ion-icon>
+        <span class="status-indicator"></span>
         {{ isWithinGeofence ? 'Within Office Range' : 'Outside Office Range' }}
       </p>
       <p class="distance" *ngIf="selectedPerimeter === 'office' && currentPosition">
@@ -46,16 +48,18 @@
         Fetching location...
       </p>
       <div style="margin-top: 6px;">
-        <ion-badge
-          [color]="selectedPerimeter === 'office' ? 'success' : (selectedPerimeter === 'field_duty' ? 'warning' : 'secondary')"
-          style="padding: 6px 10px; border-radius: 12px; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
+        <span class="mode-badge" [class.office]="selectedPerimeter === 'office'" [class.field]="selectedPerimeter === 'field_duty'" [class.remote]="selectedPerimeter === 'remote'">
           Mode: {{ getFormattedMode() }}
-        </ion-badge>
+        </span>
       </div>
     </div>
   </div>
 
   <div class="map-wrapper">
+    <div class="map-status-pill" *ngIf="mapLoaded && !mapError">
+      <span class="pulse-dot"></span>
+      <span class="pill-text">Live GPS Active</span>
+    </div>
     <div #mapContainer class="map-container"></div>
     <div class="map-error" *ngIf="mapError">
       <ion-icon name="map-outline"></ion-icon>
@@ -69,39 +73,66 @@
 
   <div class="location-card" *ngIf="currentPosition">
     <div class="location-header">
-      <div class="location-dot" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence"></div>
-      <span class="location-label">Current Location</span>
+      <div class="location-dot-wrapper">
+        <div class="location-dot" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence"></div>
+      </div>
+      <div class="location-title-group">
+        <span class="location-label">Current Location</span>
+        <span class="location-status-text" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence">
+          {{ isWithinGeofence ? 'Range Verified' : 'Outside Range' }}
+        </span>
+      </div>
     </div>
     <div class="location-coords">
-      <div class="coord-row">
-        <span class="coord-label">Latitude</span>
-        <span class="coord-value">{{ currentPosition.latitude.toFixed(6) }}</span>
+      <div class="coord-box">
+        <div class="coord-icon-container">
+          <ion-icon name="location-outline"></ion-icon>
+        </div>
+        <div class="coord-details">
+          <span class="coord-label">Latitude</span>
+          <span class="coord-value">{{ currentPosition.latitude.toFixed(6) }}</span>
+        </div>
       </div>
-      <div class="coord-row">
-        <span class="coord-label">Longitude</span>
-        <span class="coord-value">{{ currentPosition.longitude.toFixed(6) }}</span>
+      <div class="coord-box">
+        <div class="coord-icon-container">
+          <ion-icon name="navigate-outline"></ion-icon>
+        </div>
+        <div class="coord-details">
+          <span class="coord-label">Longitude</span>
+          <span class="coord-value">{{ currentPosition.longitude.toFixed(6) }}</span>
+        </div>
       </div>
     </div>
   </div>
 
   <div class="location-card fetching" *ngIf="!currentPosition && locationPermissionGranted">
-    <ion-spinner name="dots" color="medium"></ion-spinner>
-    <span>Fetching coordinates...</span>
+    <ion-spinner name="crescent" color="primary"></ion-spinner>
+    <span>Acquiring satellite coordinates...</span>
   </div>
 
   <div class="check-in-info-card" *ngIf="lastAction === 'check-in' && lastCheckInTime">
     <div class="info-header">
-      <ion-icon name="checkmark-circle"></ion-icon>
-      <span class="info-title">Active Session</span>
+      <div class="active-pulse"></div>
+      <span class="info-title">Active Attendance Session</span>
     </div>
     <div class="info-body">
       <div class="info-item">
-        <span class="info-label">Check-in Time</span>
-        <span class="info-value">{{ formatCheckInTime(lastCheckInTime) }}</span>
+        <div class="info-icon-wrapper">
+          <ion-icon name="time-outline"></ion-icon>
+        </div>
+        <div class="info-details">
+          <span class="info-label">Check-in Time</span>
+          <span class="info-value">{{ formatCheckInTime(lastCheckInTime) }}</span>
+        </div>
       </div>
       <div class="info-item">
-        <span class="info-label">Check-in Date</span>
-        <span class="info-value">{{ formatCheckInDate(lastCheckInTime) }}</span>
+        <div class="info-icon-wrapper">
+          <ion-icon name="calendar-outline"></ion-icon>
+        </div>
+        <div class="info-details">
+          <span class="info-label">Check-in Date</span>
+          <span class="info-value">{{ formatCheckInDate(lastCheckInTime) }}</span>
+        </div>
       </div>
     </div>
   </div>
