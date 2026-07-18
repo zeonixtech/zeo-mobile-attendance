@@ -3,7 +3,7 @@
     <ion-toolbar>
       <ion-buttons slot="end">
         <ion-menu-toggle [menu]="contentId + '-menu'">
-          <ion-button color="medium">
+          <ion-button style="color: #ffffff; --color: #ffffff;">
             <ion-icon slot="icon-only" name="close-outline"></ion-icon>
           </ion-button>
         </ion-menu-toggle>
@@ -49,9 +49,9 @@
 </ion-menu>
 
 <ion-header [translucent]="true">
-  <ion-toolbar color="primary">
+  <ion-toolbar>
     <ion-buttons slot="start" *ngIf="showBackButton">
-      <ion-button (click)="goBack()" style="--color: #ffffff; color: #ffffff;">
+      <ion-button (click)="goBack()">
         <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
       </ion-button>
     </ion-buttons>

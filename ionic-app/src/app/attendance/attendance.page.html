@@ -107,7 +107,7 @@
       <p>Your check-in and check-out history will appear here.</p>
     </div>
 
-    <div class="history-card" [class.today-highlight]="record.isToday" *ngFor="let record of groupedRecords">
+    <div class="history-card" [class.today-highlight]="record.isToday" [class.holiday-highlight]="record.isHoliday" *ngFor="let record of groupedRecords">
       <div class="card-inner-container">
         <!-- Date Aside Block -->
         <div class="card-date-aside" [class.today-date-aside]="record.isToday">
@@ -118,8 +118,8 @@
 
         <!-- Details Side Block -->
         <div class="card-details-aside">
-          <!-- Regular Work Day (Not Leave) -->
-          <div class="card-content-grid" *ngIf="!record.isLeave">
+          <!-- Regular Work Day (Not Leave, Not Holiday) -->
+          <div class="card-content-grid" *ngIf="!record.isLeave && !record.isHoliday">
             <!-- Check In Column -->
             <div class="log-column check-in-col">
               <div class="log-type-title">
@@ -192,6 +192,18 @@
               <span class="leave-subtitle">Full day leave approved</span>
             </div>
             <span class="leave-badge">{{ record.leaveEntry?.mode || 'Leave' }}</span>
+          </div>
+
+          <!-- On Holiday Day -->
+          <div class="holiday-card-content" *ngIf="record.isHoliday">
+            <div class="holiday-icon-wrapper">
+              <ion-icon name="gift-outline"></ion-icon>
+            </div>
+            <div class="holiday-info">
+              <span class="holiday-title">{{ record.holidayEntry?.mode || 'Holiday' }}</span>
+              <span class="holiday-subtitle">Sunday Weekly Off</span>
+            </div>
+            <span class="holiday-badge">Holiday</span>
           </div>
         </div>
       </div>

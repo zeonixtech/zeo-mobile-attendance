@@ -41,9 +41,9 @@ ion-menu {
   --width: 280px;
 
   ion-toolbar {
-    --background: #ffffff;
-    --color: #1a1a2e;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    --background: linear-gradient(135deg, #00b4fd 0%, #0062e3 100%);
+    --color: #ffffff;
+    border-bottom: none;
   }
 
   ion-content.menu-content {
@@ -168,6 +168,67 @@ ion-header {
     min-height: 48px !important;
   }
 }
+
+/* App Header Styling - Brand Blue from Logo */
+app-header ion-header {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(0, 78, 204, 0.2) !important;
+  box-shadow: 0 4px 20px rgba(0, 98, 227, 0.15) !important;
+
+  ion-toolbar {
+    --padding-top: 2px !important;
+    --padding-bottom: 2px !important;
+    --min-height: 48px !important;
+    min-height: 48px !important;
+    --background: linear-gradient(135deg, #00b4fd 0%, #0062e3 100%) !important;
+    --color: #ffffff !important;
+    --border-style: none !important;
+
+    ion-menu-button {
+      --color: #ffffff !important;
+    }
+
+    ion-button {
+      --color: #ffffff !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .header-logo {
+    filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.85)) brightness(1.2) !important;
+  }
+}
+
+/* Dark Mode override for Brand Blue Header */
+@media (prefers-color-scheme: dark) {
+  app-header ion-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+
+    ion-toolbar {
+      --background: linear-gradient(135deg, #008cc5 0%, #004da7 100%) !important;
+      --color: #ffffff !important;
+
+      ion-menu-button {
+        --color: #ffffff !important;
+      }
+
+      ion-button {
+        --color: #ffffff !important;
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  ion-menu ion-toolbar {
+    --background: linear-gradient(135deg, #008cc5 0%, #004da7 100%) !important;
+    --color: #ffffff !important;
+  }
+}
+
+
 
 ion-menu ion-header {
   margin-top: 0 !important;

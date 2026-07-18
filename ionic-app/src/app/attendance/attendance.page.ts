@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { MenuController, ViewWillEnter } from '@ionic/angular';
 
 export interface HistoryEntry {
-  type: 'check-in' | 'check-out' | 'leave';
+  type: 'check-in' | 'check-out' | 'leave' | 'holiday';
   timestamp: string;
   latitude?: number;
   longitude?: number;
@@ -20,6 +20,8 @@ export interface DateGroupedAttendance {
   isToday?: boolean;
   isLeave?: boolean;
   leaveEntry?: HistoryEntry;
+  isHoliday?: boolean;
+  holidayEntry?: HistoryEntry;
 }
 
 @Component({
@@ -67,7 +69,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
   loadHistory() {
     let history: HistoryEntry[] = [];
     const stored = localStorage.getItem('attendance_history');
-    const hasRichMock = localStorage.getItem('attendance_history_rich_leave');
+    const hasRichMock = localStorage.getItem('attendance_history_sunday_holiday');
 
     if (stored && hasRichMock) {
       history = JSON.parse(stored);
@@ -78,7 +80,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
       // Prepopulate with mock data if history is empty or old
       history = this.generateMockHistory();
       localStorage.setItem('attendance_history', JSON.stringify(history));
-      localStorage.setItem('attendance_history_rich_leave', 'true');
+      localStorage.setItem('attendance_history_sunday_holiday', 'true');
     }
 
     // Sort by timestamp descending
@@ -116,7 +118,15 @@ export class AttendancePage implements OnInit, ViewWillEnter {
         const date = new Date(latestDate);
         date.setDate(latestDate.getDate() + i);
         const day = date.getDay();
-        if (day === 0 || day === 6) continue; // Skip weekends
+        if (day === 0) {
+          // Sunday is a Holiday!
+          newRecords.push({
+            type: 'holiday',
+            timestamp: date.toISOString(),
+            mode: 'Sunday'
+          });
+          continue;
+        }
 
         this.addMockRecordPair(newRecords, date);
       }
@@ -182,6 +192,8 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     this.groupedRecords.forEach(r => {
       if (r.checkIn) count++;
       if (r.checkOut) count++;
+      if (r.isLeave) count++;
+      if (r.isHoliday) count++;
     });
     return count;
   }
@@ -248,6 +260,9 @@ export class AttendancePage implements OnInit, ViewWillEnter {
       } else if (entry.type === 'leave') {
         groups[key].isLeave = true;
         groups[key].leaveEntry = entry;
+      } else if (entry.type === 'holiday') {
+        groups[key].isHoliday = true;
+        groups[key].holidayEntry = entry;
       }
     });
 
@@ -279,18 +294,34 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     const records: HistoryEntry[] = [];
     const baseDate = new Date();
 
-    // 1. Daily for the last 7 days:
-    for (let i = 0; i < 7; i++) {
+    // 1. Daily for the last 30 days:
+    for (let i = 0; i < 30; i++) {
       const date = new Date(baseDate);
       date.setDate(baseDate.getDate() - i);
       const day = date.getDay();
-      if (day === 0 || day === 6) continue;
 
-      if (i === 3) {
+      if (day === 0) {
+        // Sunday is always a holiday!
+        records.push({
+          type: 'holiday',
+          timestamp: date.toISOString(),
+          mode: 'Sunday'
+        });
+        continue;
+      }
+
+      // Add a couple of leave days for variety
+      if (i === 5) {
         records.push({
           type: 'leave',
           timestamp: date.toISOString(),
           mode: 'Sick Leave'
+        });
+      } else if (i === 12) {
+        records.push({
+          type: 'leave',
+          timestamp: date.toISOString(),
+          mode: 'Casual Leave'
         });
       } else {
         this.addMockRecordPair(records, date);
@@ -304,13 +335,26 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     let current = new Date(start);
     let mockLeaveCounter = 0;
     while (current < baseDate) {
-      // Don't duplicate the current month since we already have daily entries
+      // Don't duplicate the current month since we already have daily entries for the last 30 days
       if (current.getMonth() !== baseDate.getMonth() || current.getFullYear() !== baseDate.getFullYear()) {
+        // Add all Sundays for this past month as holidays
+        const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const date = new Date(current.getFullYear(), current.getMonth(), d);
+          if (date.getDay() === 0) {
+            records.push({
+              type: 'holiday',
+              timestamp: date.toISOString(),
+              mode: 'Sunday'
+            });
+          }
+        }
+
         // Add 2 random working days in this month
         for (let j = 0; j < 2; j++) {
           const mockDate = new Date(current.getFullYear(), current.getMonth(), 10 + j * 7);
           const day = mockDate.getDay();
-          if (day === 0 || day === 6) continue;
+          if (day === 0) continue; // Skip Sunday
 
           // Occasionally add a Leave entry in past months
           if (j === 1 && mockLeaveCounter % 4 === 0) {
@@ -333,7 +377,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
 
   private addMockRecordPair(records: HistoryEntry[], date: Date) {
     const day = date.getDay();
-    if (day === 0 || day === 6) return; // Skip weekends
+    if (day === 0) return; // Skip only Sunday (Saturday is a working day)
 
     // Check-in at 9:00 AM + random minutes
     const checkInTime = new Date(date);

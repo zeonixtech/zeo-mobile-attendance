@@ -479,18 +479,19 @@ ion-infinite-scroll {
   }
 }
 
-.leave-card-content {
+.leave-card-content,
+.holiday-card-content {
   padding: 12px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
   background: #ffffff;
 
-  .leave-icon-wrapper {
+  .leave-icon-wrapper,
+  .holiday-icon-wrapper {
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: rgba(245, 158, 11, 0.12);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -498,21 +499,37 @@ ion-infinite-scroll {
 
     ion-icon {
       font-size: 20px;
+    }
+  }
+
+  .leave-icon-wrapper {
+    background: rgba(245, 158, 11, 0.12);
+    ion-icon {
       color: #d97706; /* Amber */
     }
   }
 
-  .leave-info {
+  .holiday-icon-wrapper {
+    background: rgba(239, 68, 68, 0.08);
+    ion-icon {
+      color: #dc2626; /* Red/Rose */
+    }
+  }
+
+  .leave-info,
+  .holiday-info {
     flex: 1;
 
-    .leave-title {
+    .leave-title,
+    .holiday-title {
       font-size: 15px;
       font-weight: 700;
       color: #1a1a2e;
       display: block;
     }
 
-    .leave-subtitle {
+    .leave-subtitle,
+    .holiday-subtitle {
       font-size: 12px;
       color: #666;
       margin-top: 2px;
@@ -520,8 +537,8 @@ ion-infinite-scroll {
     }
   }
 
-  .leave-badge {
-    background: #f59e0b; /* Amber */
+  .leave-badge,
+  .holiday-badge {
     color: #ffffff;
     font-size: 10px;
     font-weight: 700;
@@ -530,4 +547,41 @@ ion-infinite-scroll {
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
+
+  .leave-badge {
+    background: #f59e0b; /* Amber */
+  }
+
+  .holiday-badge {
+    background: #ef4444; /* Red/Rose */
+  }
 }
+
+.history-card.holiday-highlight {
+  border: 1.5px dashed rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.01) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.02) !important;
+
+  .card-date-aside {
+    background: rgba(239, 68, 68, 0.03) !important;
+    border-right: 1px solid rgba(239, 68, 68, 0.08) !important;
+
+    .date-day-num {
+      color: #dc2626 !important;
+    }
+
+    .date-month-short {
+      color: #b91c1c !important;
+    }
+
+    .date-day-short {
+      color: #ef4444 !important;
+    }
+  }
+
+  .holiday-card-content {
+    background: transparent !important;
+  }
+}
+
+
