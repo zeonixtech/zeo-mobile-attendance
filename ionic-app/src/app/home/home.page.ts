@@ -172,12 +172,12 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       fullscreenControl: false,
       zoomControl: true,
       mapId: 'DEMO_MAP_ID',
-      styles: [
-        {
-          featureType: 'poi',
-          stylers: [{ visibility: 'off' }],
-        },
-      ],
+      // styles: [
+      //   {
+      //     featureType: 'poi',
+      //     stylers: [{ visibility: 'off' }],
+      //   },
+      // ],
     });
 
     let AdvancedMarkerElement = googleMaps.marker?.AdvancedMarkerElement;
@@ -215,7 +215,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     const officeInfoWindow = new googleMaps.InfoWindow({
       content: '<div style="padding:4px 8px;font-size:13px;font-weight:600;color:#4285F4;">Office</div>',
     });
-    this.officeMarker.addListener('click', () => {
+    this.officeMarker.addListener('gmp-click', () => {
       officeInfoWindow.open(this.map, this.officeMarker);
     });
 
@@ -251,7 +251,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       content: '',
     });
 
-    this.deviceMarker.addListener('click', () => {
+    this.deviceMarker.addListener('gmp-click', () => {
       this.updateDeviceInfoWindow();
       this.deviceInfoWindow.open(this.map, this.deviceMarker);
     });
