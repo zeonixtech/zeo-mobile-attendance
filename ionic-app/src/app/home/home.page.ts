@@ -213,8 +213,45 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     });
 
     const officeInfoWindow = new googleMaps.InfoWindow({
-      content: '<div style="padding:4px 8px;font-size:13px;font-weight:600;color:#4285F4;">Office</div>',
+      content: `
+        <div style="padding: 8px 12px; font-family: 'Roboto', sans-serif; max-width: 220px;">
+          <div style="font-weight: 700; color: #4285F4; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            Office Location
+          </div>
+          <div style="font-size: 12px; color: #5f6368; line-height: 1.4; margin-top: 4px;" id="office-address-container">
+            S.C.O. No. 11, Top Floor, Sector 17-E, Chandigarh - 160017, India
+          </div>
+        </div>
+      `
     });
+
+    try {
+      const geocoder = new googleMaps.Geocoder();
+      geocoder.geocode({ location: officeCoords }, (results: any, status: any) => {
+        if (status === 'OK' && results && results[0]) {
+          const addressContainer = document.getElementById('office-address-container');
+          if (addressContainer) {
+            addressContainer.textContent = results[0].formatted_address;
+          } else {
+            officeInfoWindow.setContent(`
+              <div style="padding: 8px 12px; font-family: 'Roboto', sans-serif; max-width: 220px;">
+                <div style="font-weight: 700; color: #4285F4; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  Office Location
+                </div>
+                <div style="font-size: 12px; color: #5f6368; line-height: 1.4; margin-top: 4px;">
+                  ${results[0].formatted_address}
+                </div>
+              </div>
+            `);
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Error reverse geocoding office coordinates:', e);
+    }
+
     this.officeMarker.addListener('gmp-click', () => {
       officeInfoWindow.open(this.map, this.officeMarker);
     });
