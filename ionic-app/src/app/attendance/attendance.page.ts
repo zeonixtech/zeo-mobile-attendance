@@ -22,6 +22,9 @@ export interface DateGroupedAttendance {
   leaveEntry?: HistoryEntry;
   isHoliday?: boolean;
   holidayEntry?: HistoryEntry;
+  allLogs?: HistoryEntry[];
+  hasMultiple?: boolean;
+  showDetails?: boolean;
 }
 
 @Component({
@@ -70,8 +73,9 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     let history: HistoryEntry[] = [];
     const stored = localStorage.getItem('attendance_history');
     const hasRichMock = localStorage.getItem('attendance_history_sunday_holiday');
+    const hasMultipleMock = localStorage.getItem('attendance_history_multiple_logs');
 
-    if (stored && hasRichMock) {
+    if (stored && hasRichMock && hasMultipleMock) {
       history = JSON.parse(stored);
       // Sort first to ensure history[0] is the latest entry
       history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -81,6 +85,7 @@ export class AttendancePage implements OnInit, ViewWillEnter {
       history = this.generateMockHistory();
       localStorage.setItem('attendance_history', JSON.stringify(history));
       localStorage.setItem('attendance_history_sunday_holiday', 'true');
+      localStorage.setItem('attendance_history_multiple_logs', 'true');
     }
 
     // Sort by timestamp descending
@@ -190,10 +195,13 @@ export class AttendancePage implements OnInit, ViewWillEnter {
   getFilteredRecordsCount(): number {
     let count = 0;
     this.groupedRecords.forEach(r => {
-      if (r.checkIn) count++;
-      if (r.checkOut) count++;
-      if (r.isLeave) count++;
-      if (r.isHoliday) count++;
+      if (r.isLeave) {
+        count++;
+      } else if (r.isHoliday) {
+        count++;
+      } else if (r.allLogs) {
+        count += r.allLogs.length;
+      }
     });
     return count;
   }
@@ -243,8 +251,15 @@ export class AttendancePage implements OnInit, ViewWillEnter {
           dayNumber: String(dateObj.getDate()).padStart(2, '0'),
           monthShort: dateObj.toLocaleDateString('en-US', { month: 'short' }),
           dayShort: dateObj.toLocaleDateString('en-US', { weekday: 'short' }),
-          isToday: key === todayKey
+          isToday: key === todayKey,
+          allLogs: [],
+          hasMultiple: false,
+          showDetails: false
         };
+      }
+
+      if (entry.type === 'check-in' || entry.type === 'check-out') {
+        groups[key].allLogs!.push(entry);
       }
 
       if (entry.type === 'check-in') {
@@ -263,6 +278,17 @@ export class AttendancePage implements OnInit, ViewWillEnter {
       } else if (entry.type === 'holiday') {
         groups[key].isHoliday = true;
         groups[key].holidayEntry = entry;
+      }
+    });
+
+    // Post-process to sort allLogs and set hasMultiple
+    Object.keys(groups).forEach(key => {
+      const g = groups[key];
+      if (g.allLogs) {
+        g.allLogs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        const checkIns = g.allLogs.filter(e => e.type === 'check-in');
+        const checkOuts = g.allLogs.filter(e => e.type === 'check-out');
+        g.hasMultiple = checkIns.length > 1 || checkOuts.length > 1;
       }
     });
 
@@ -322,6 +348,48 @@ export class AttendancePage implements OnInit, ViewWillEnter {
           type: 'leave',
           timestamp: date.toISOString(),
           mode: 'Casual Leave'
+        });
+      } else if (i === 2) {
+        // Multiple check-in/check-out for yesterday / 2 days ago
+        const checkIn1 = new Date(date);
+        checkIn1.setHours(9, 5, 0);
+        
+        const checkOut1 = new Date(date);
+        checkOut1.setHours(13, 15, 0);
+
+        const checkIn2 = new Date(date);
+        checkIn2.setHours(14, 10, 0);
+
+        const checkOut2 = new Date(date);
+        checkOut2.setHours(18, 25, 0);
+
+        records.push({
+          type: 'check-in',
+          timestamp: checkIn1.toISOString(),
+          latitude: 30.740416,
+          longitude: 76.780692,
+          mode: 'Office'
+        });
+        records.push({
+          type: 'check-out',
+          timestamp: checkOut1.toISOString(),
+          latitude: 30.740416,
+          longitude: 76.780692,
+          mode: 'Office'
+        });
+        records.push({
+          type: 'check-in',
+          timestamp: checkIn2.toISOString(),
+          latitude: 30.740510,
+          longitude: 76.780710,
+          mode: 'Field Duty'
+        });
+        records.push({
+          type: 'check-out',
+          timestamp: checkOut2.toISOString(),
+          latitude: 30.740416,
+          longitude: 76.780692,
+          mode: 'Office'
         });
       } else {
         this.addMockRecordPair(records, date);

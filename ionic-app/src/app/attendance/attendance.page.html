@@ -182,6 +182,14 @@
             </div>
           </div>
 
+          <!-- Toggle Button for Multiple Logs -->
+          <div class="history-toggle-container" *ngIf="!record.isLeave && !record.isHoliday && record.hasMultiple">
+            <button class="toggle-history-btn" (click)="record.showDetails = !record.showDetails">
+              <span class="toggle-text">{{ record.showDetails ? 'Hide Detailed Logs' : 'View All Logs (' + record.allLogs?.length + ')' }}</span>
+              <ion-icon class="toggle-icon" [name]="record.showDetails ? 'chevron-up-outline' : 'chevron-down-outline'"></ion-icon>
+            </button>
+          </div>
+
           <!-- On Leave Day -->
           <div class="leave-card-content" *ngIf="record.isLeave">
             <div class="leave-icon-wrapper">
@@ -204,6 +212,40 @@
               <span class="holiday-subtitle">Sunday Weekly Off</span>
             </div>
             <span class="holiday-badge">Holiday</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Expanded Detailed Logs -->
+      <div class="detailed-logs-container animate-fade-in" *ngIf="record.hasMultiple && record.showDetails">
+        <div class="detailed-logs-header">
+          <ion-icon name="list-circle-outline"></ion-icon>
+          <span>Attendance Timeline</span>
+        </div>
+        <div class="timeline-wrapper">
+          <div class="timeline-item" *ngFor="let log of record.allLogs">
+            <div class="timeline-marker" [class.check-in-marker]="log.type === 'check-in'" [class.check-out-marker]="log.type === 'check-out'">
+              <div class="marker-dot"></div>
+              <div class="marker-line"></div>
+            </div>
+            <div class="timeline-content">
+              <div class="timeline-row">
+                <span class="timeline-type" [class.check-in-text]="log.type === 'check-in'" [class.check-out-text]="log.type === 'check-out'">
+                  {{ log.type === 'check-in' ? 'Check In' : 'Check Out' }}
+                </span>
+                <span class="timeline-time">{{ formatTime(log.timestamp) }}</span>
+              </div>
+              <div class="timeline-meta">
+                <span class="timeline-mode">
+                  <ion-icon name="briefcase-outline"></ion-icon>
+                  {{ log.mode || 'Office' }}
+                </span>
+                <span class="timeline-coords" *ngIf="log.latitude !== undefined && log.longitude !== undefined">
+                  <ion-icon name="location-outline"></ion-icon>
+                  {{ log.latitude.toFixed(6) }}, {{ log.longitude.toFixed(6) }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
