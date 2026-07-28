@@ -2,21 +2,6 @@ ion-content {
   --background: #f4f5f8;
 }
 
-ion-title {
-  display: flex;
-  align-items: center;
-
-  ion-icon {
-    margin-right: 8px;
-  }
-
-  .header-logo {
-    height: 24px;
-    margin-right: 8px;
-    vertical-align: middle;
-  }
-}
-
 .permission-banner {
   display: flex;
   align-items: center;
@@ -646,5 +631,195 @@ ion-title {
       font-weight: 700;
       color: #1e293b;
     }
+  }
+}
+
+.today-logs-toggle-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.toggle-logs-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  outline: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+
+  &:hover, &:active {
+    background-color: rgba(34, 197, 94, 0.08);
+  }
+
+  .toggle-icon {
+    font-size: 14px;
+  }
+}
+
+.today-logs-list {
+  background: white;
+  border: 1px solid rgba(34, 197, 94, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+
+  .today-logs-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #15803d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(34, 197, 94, 0.05);
+    padding-bottom: 4px;
+
+    ion-icon {
+      font-size: 14px;
+    }
+  }
+
+  .today-timeline {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .today-timeline-item {
+    display: flex;
+    gap: 10px;
+    position: relative;
+    padding-bottom: 10px;
+
+    &:last-child {
+      padding-bottom: 0;
+      .today-timeline-marker .marker-line {
+        display: none;
+      }
+    }
+  }
+
+  .today-timeline-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 10px;
+    flex-shrink: 0;
+
+    .marker-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ccc;
+      z-index: 2;
+      margin-top: 4px;
+    }
+
+    &.check-in {
+      .marker-dot {
+        background: #2dd36f;
+        box-shadow: 0 0 0 2px rgba(45, 211, 111, 0.2);
+      }
+    }
+
+    &.check-out {
+      .marker-dot {
+        background: #eb445a;
+        box-shadow: 0 0 0 2px rgba(235, 68, 90, 0.2);
+      }
+    }
+
+    .marker-line {
+      position: absolute;
+      top: 12px;
+      bottom: 0;
+      width: 2px;
+      background: #e2e8f0;
+      z-index: 1;
+    }
+  }
+
+  .today-timeline-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    .log-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-type {
+      font-size: 11px;
+      font-weight: 700;
+
+      &.check-in-text {
+        color: #27aa57;
+      }
+
+      &.check-out-text {
+        color: #d23d50;
+      }
+    }
+
+    .log-time {
+      font-size: 11px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .log-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: #64748b;
+      font-size: 9px;
+
+      .log-mode, .log-coords {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+
+        ion-icon {
+          font-size: 10px;
+          color: #94a3b8;
+        }
+      }
+
+      .log-coords {
+        font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+      }
+    }
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

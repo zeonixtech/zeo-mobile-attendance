@@ -31,6 +31,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   isCheckingPermission = true;
   selectedPerimeter: 'office' | 'field_duty' | 'remote' | null = null;
   lastCheckInTime: string | null = null;
+  todayLogs: any[] = [];
+  showTodayLogs = false;
 
   private positionSub!: Subscription;
   private map: any;
@@ -109,6 +111,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         console.error('Error loading last action from history:', e);
       }
     }
+    this.loadTodayLogs();
 
     await this.deviceInfoService.loadDeviceInfo();
     this.deviceInfo = this.deviceInfoService.getDeviceInfo();
@@ -393,6 +396,31 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         {
           text: 'Confirm',
           handler: async () => {
+
+            /*************************************************************************************************************** */
+            //Comment below code to stop real API calling
+            this.isLoading = true;
+            this.isLoading = false;
+            this.lastAction = type;
+            this.saveToHistory(type, modeStr);
+
+            if (type === 'check-in') {
+              this.lastCheckInTime = new Date().toISOString();
+            } else {
+              this.lastCheckInTime = null;
+            }
+
+            this.loadTodayLogs();
+            let response: any = await this.attendanceApiService.postAttendance(type, this.currentPosition!, this.deviceInfo!, modeStr)
+
+            const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
+            await this.showToast(msg, 'success');
+            //Comment above code to stop real API calling
+
+            /*************************************************************************************************************** */
+
+            //Uncomment below code to call real API
+            /*
             this.isLoading = true;
             this.attendanceApiService
               .postAttendance(type, this.currentPosition!, this.deviceInfo!, modeStr)
@@ -408,6 +436,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
                     this.lastCheckInTime = null;
                   }
 
+                  this.loadTodayLogs();
+
                   const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
                   await this.showToast(msg, 'success');
                 },
@@ -420,6 +450,9 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
                   );
                 },
               });
+
+              */
+            //Uncomment bbove code to call real API
           },
         },
       ],
@@ -460,6 +493,35 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       localStorage.setItem('attendance_history', JSON.stringify(history));
     } catch (e) {
       console.error('Error saving history to localStorage:', e);
+    }
+  }
+
+  loadTodayLogs() {
+    this.todayLogs = [];
+    const storedHistory = localStorage.getItem('attendance_history');
+    if (storedHistory) {
+      try {
+        const history = JSON.parse(storedHistory);
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayKey = `${year}-${month}-${day}`;
+
+        this.todayLogs = history
+          .filter((entry: any) => {
+            if (entry.type !== 'check-in' && entry.type !== 'check-out') return false;
+            const entryDateObj = new Date(entry.timestamp);
+            const entryYear = entryDateObj.getFullYear();
+            const entryMonth = String(entryDateObj.getMonth() + 1).padStart(2, '0');
+            const entryDay = String(entryDateObj.getDate()).padStart(2, '0');
+            const entryKey = `${entryYear}-${entryMonth}-${entryDay}`;
+            return entryKey === todayKey;
+          })
+          .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      } catch (e) {
+        console.error('Error loading today logs:', e);
+      }
     }
   }
 

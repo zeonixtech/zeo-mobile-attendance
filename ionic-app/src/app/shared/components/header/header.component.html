@@ -50,16 +50,16 @@
 
 <ion-header [translucent]="true">
   <ion-toolbar>
-    <ion-buttons slot="start" *ngIf="showBackButton">
-      <ion-button (click)="goBack()">
-        <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-    <ion-title>
-      <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="header-logo" (click)="goBack()" style="cursor: pointer;" />
-    </ion-title>
-    <ion-buttons slot="end">
-      <ion-menu-button [menu]="contentId + '-menu'"></ion-menu-button>
-    </ion-buttons>
+    <div class="header-bar-container">
+      <div class="header-brand-section">
+        <ion-button fill="clear" *ngIf="showBackButton" (click)="goBack()" class="header-back-button">
+          <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+        </ion-button>
+        <img src="assets/icon/logo.png" alt="ZeoHRM Logo" class="header-logo" (click)="goBack()" />
+      </div>
+      <div class="header-action-section">
+        <ion-menu-button [menu]="contentId + '-menu'" class="header-menu-button"></ion-menu-button>
+      </div>
+    </div>
   </ion-toolbar>
 </ion-header>

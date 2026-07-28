@@ -156,49 +156,146 @@ ion-tab-bar {
   }
 }
 
-/* Adjust header heights and margins to be more compact */
-ion-header {
+/* Adjust header heights and margins to be consistent in both browser and Android emulator */
+ion-header,
+.md ion-header,
+.ios ion-header {
   margin-top: 0 !important;
   padding-top: 0 !important;
+  box-shadow: none !important;
 
-  ion-toolbar {
-    --padding-top: 2px !important;
-    --padding-bottom: 2px !important;
-    --min-height: 48px !important;
-    min-height: 48px !important;
+  ion-toolbar,
+  .md ion-toolbar,
+  .ios ion-toolbar {
+    --padding-top: 0px !important;
+    --padding-bottom: 0px !important;
+    --padding-start: 12px !important;
+    --padding-end: 12px !important;
+    --min-height: 52px !important;
+    min-height: 52px !important;
+    height: 52px !important;
+    display: flex !important;
+    align-items: center !important;
   }
 }
 
+app-header {
+  display: block;
+  width: 100%;
+}
+
 /* App Header Styling - Brand Blue from Logo */
-app-header ion-header {
+app-header ion-header,
+.md app-header ion-header,
+.ios app-header ion-header {
   margin-top: 0 !important;
   padding-top: 0 !important;
   background: transparent !important;
   border-bottom: 1px solid rgba(0, 78, 204, 0.2) !important;
   box-shadow: 0 4px 20px rgba(0, 98, 227, 0.15) !important;
 
-  ion-toolbar {
-    --padding-top: 2px !important;
-    --padding-bottom: 2px !important;
-    --min-height: 48px !important;
-    min-height: 48px !important;
+  ion-toolbar,
+  .md ion-toolbar,
+  .ios ion-toolbar {
+    --padding-top: 0px !important;
+    --padding-bottom: 0px !important;
+    --padding-start: 12px !important;
+    --padding-end: 12px !important;
+    --min-height: 52px !important;
+    min-height: 52px !important;
+    height: 52px !important;
     --background: linear-gradient(135deg, #00b4fd 0%, #0062e3 100%) !important;
     --color: #ffffff !important;
     --border-style: none !important;
+    display: flex !important;
+    align-items: center !important;
 
-    ion-menu-button {
-      --color: #ffffff !important;
-    }
+    .header-bar-container {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      width: 100% !important;
+      height: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
 
-    ion-button {
-      --color: #ffffff !important;
-      color: #ffffff !important;
+      .header-brand-section {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        height: 100% !important;
+
+        .header-back-button {
+          height: 38px !important;
+          width: 38px !important;
+          min-height: 38px !important;
+          min-width: 38px !important;
+          --height: 38px !important;
+          --width: 38px !important;
+          --padding-top: 0 !important;
+          --padding-bottom: 0 !important;
+          --padding-start: 0 !important;
+          --padding-end: 0 !important;
+          margin: 0 !important;
+          --color: #ffffff !important;
+          color: #ffffff !important;
+
+          ion-icon {
+            font-size: 24px !important;
+            color: #ffffff !important;
+          }
+        }
+
+        .header-logo {
+          height: 26px !important;
+          max-height: 26px !important;
+          width: auto !important;
+          vertical-align: middle !important;
+          display: block !important;
+          object-fit: contain !important;
+          cursor: pointer;
+          filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.85)) brightness(1.2) !important;
+        }
+      }
+
+      .header-action-section {
+        display: flex !important;
+        align-items: center !important;
+        margin-left: auto !important;
+        height: 100% !important;
+
+        .header-menu-button {
+          height: 38px !important;
+          width: 38px !important;
+          min-height: 38px !important;
+          min-width: 38px !important;
+          --height: 38px !important;
+          --width: 38px !important;
+          --padding-top: 0 !important;
+          --padding-bottom: 0 !important;
+          --padding-start: 0 !important;
+          --padding-end: 0 !important;
+          margin: 0 !important;
+          --color: #ffffff !important;
+          color: #ffffff !important;
+
+          ion-icon {
+            font-size: 24px !important;
+            color: #ffffff !important;
+          }
+        }
+      }
     }
   }
+}
 
-  .header-logo {
-    filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.85)) brightness(1.2) !important;
-  }
+.header-logo {
+  height: 26px !important;
+  max-height: 26px !important;
+  width: auto !important;
+  vertical-align: middle !important;
+  display: inline-block !important;
+  object-fit: contain !important;
 }
 
 /* Dark Mode override for Brand Blue Header */
@@ -228,8 +325,6 @@ app-header ion-header {
   }
 }
 
-
-
 ion-menu ion-header {
   margin-top: 0 !important;
   padding-top: 0 !important;
@@ -237,8 +332,9 @@ ion-menu ion-header {
   ion-toolbar {
     --padding-top: 0px !important;
     --padding-bottom: 0px !important;
-    --min-height: 40px !important;
-    min-height: 40px !important;
+    --min-height: 52px !important;
+    min-height: 52px !important;
+    height: 52px !important;
   }
 }
 

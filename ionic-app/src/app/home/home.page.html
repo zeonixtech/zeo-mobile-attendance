@@ -135,6 +135,48 @@
         </div>
       </div>
     </div>
+
+    <!-- Toggle button for today's logs -->
+    <div class="today-logs-toggle-container" *ngIf="todayLogs && todayLogs.length > 0">
+      <button class="toggle-logs-btn" (click)="showTodayLogs = !showTodayLogs">
+        <span class="toggle-text">{{ showTodayLogs ? 'Hide Today\'s Logs' : 'View Today\'s Logs (' + todayLogs.length + ')' }}</span>
+        <ion-icon class="toggle-icon" [name]="showTodayLogs ? 'chevron-up-outline' : 'chevron-down-outline'"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Timeline of today's checkin checkout logs -->
+    <div class="today-logs-list animate-fade-in" *ngIf="todayLogs && todayLogs.length > 0 && showTodayLogs">
+      <div class="today-logs-title">
+        <ion-icon name="list-outline"></ion-icon>
+        <span>Today's Sessions</span>
+      </div>
+      <div class="today-timeline">
+        <div class="today-timeline-item" *ngFor="let log of todayLogs">
+          <div class="today-timeline-marker" [class.check-in]="log.type === 'check-in'" [class.check-out]="log.type === 'check-out'">
+            <div class="marker-dot"></div>
+            <div class="marker-line"></div>
+          </div>
+          <div class="today-timeline-content">
+            <div class="log-info-row">
+              <span class="log-type" [class.check-in-text]="log.type === 'check-in'" [class.check-out-text]="log.type === 'check-out'">
+                {{ log.type === 'check-in' ? 'Check In' : 'Check Out' }}
+              </span>
+              <span class="log-time">{{ formatCheckInTime(log.timestamp) }}</span>
+            </div>
+            <div class="log-meta-row">
+              <span class="log-mode">
+                <ion-icon name="briefcase-outline"></ion-icon>
+                {{ log.mode || 'Office' }}
+              </span>
+              <span class="log-coords" *ngIf="log.latitude !== undefined && log.longitude !== undefined">
+                <ion-icon name="location-outline"></ion-icon>
+                {{ log.latitude.toFixed(4) }}, {{ log.longitude.toFixed(4) }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="button-container">
