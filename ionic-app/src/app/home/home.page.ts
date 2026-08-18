@@ -4,8 +4,9 @@ import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { GeolocationService, DevicePosition } from '../services/geolocation.service';
 import { DeviceInfoService, DeviceInfo } from '../services/device-info.service';
-import { GeofenceService } from '../services/geofence.service';
+import { GeofenceService, OperatingArea } from '../services/geofence.service';
 import { AttendanceApiService } from '../services/attendance-api.service';
+import { AttendanceTrackingService } from '../services/attendance-tracking.service';
 import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
 import { SharedApi } from '../services/shared-api';
@@ -30,6 +31,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   locationPermissionGranted = false;
   isCheckingPermission = true;
   selectedPerimeter: 'office' | 'field_duty' | 'remote' | null = null;
+  activeArea: OperatingArea | null = null;
+  private activeAreaPromise: Promise<OperatingArea | null> | null = null;
   lastCheckInTime: string | null = null;
   todayLogs: any[] = [];
   showTodayLogs = false;
@@ -49,6 +52,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     private deviceInfoService: DeviceInfoService,
     private geofenceService: GeofenceService,
     private attendanceApiService: AttendanceApiService,
+    private attendanceTrackingService: AttendanceTrackingService,
     private alertController: AlertController,
     private toastController: ToastController,
     private ngZone: NgZone,
@@ -62,9 +66,61 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     await this.menuController.enable(true, 'home-content-menu');
     await this.menuController.enable(false, 'attendance-content-menu');
     await this.menuController.close('home-content-menu');
+
+    await this.refreshForCurrentMode();
+  }
+
+  /**
+   * Re-reads the persisted attendance mode every time this page becomes active,
+   * not just on first load. HomePage is a reused component instance across Ionic
+   * navigation, so ngOnInit() (which only ever runs once) can't pick up a mode
+   * switch made via the Switch Attendance Mode flow — without this, the MODE
+   * badge, geofence check, and map silently kept showing whatever mode was active
+   * the first time this page was ever entered.
+   */
+  private async refreshForCurrentMode() {
+    const newPerimeter = (localStorage.getItem('selected_perimeter') as any) || 'office';
+    const perimeterChanged = newPerimeter !== this.selectedPerimeter;
+
+    if (perimeterChanged) {
+      this.selectedPerimeter = newPerimeter;
+      this.activeAreaPromise = null; // memoized per-mode — drop the stale promise
+    }
+
+    this.activeArea = await this.getActiveArea();
+
+    if (this.currentPosition && this.activeArea) {
+      this.isWithinGeofence = this.geofenceService.isWithinArea(this.currentPosition, this.activeArea);
+    }
+
+    if (perimeterChanged && this.map && this.activeArea) {
+      this.applyAreaToMap(this.activeArea);
+    }
+  }
+
+  /** Re-centers the already-built map on a newly-active area instead of rebuilding it. */
+  private applyAreaToMap(area: OperatingArea) {
+    const areaCoords = { lat: area.lat, lng: area.lng };
+    const isOffice = this.selectedPerimeter === 'office';
+    const areaLabel = isOffice ? 'Office Location' : 'Designated Area';
+
+    this.map.setCenter(areaCoords);
+    if (this.officeMarker) {
+      this.officeMarker.position = areaCoords;
+      this.officeMarker.title = areaLabel;
+    }
+    if (this.geofenceCircle) {
+      this.geofenceCircle.setCenter(areaCoords);
+      this.geofenceCircle.setRadius(area.radiusMeters);
+    }
+    this.updateMapPosition();
   }
 
   async ngOnInit() {
+    // Resolved first, synchronously, so it's available to ngAfterViewInit's map
+    // init regardless of how the rest of this async chain interleaves with it.
+    this.selectedPerimeter = (localStorage.getItem('selected_perimeter') as any) || 'office';
+
     this.isCheckingPermission = true;
     // const token = this.authService.getTokenFromCookie();
     const claims = await this.authService.getIdentityClaims();
@@ -87,7 +143,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
 
     }
 
-    this.selectedPerimeter = (localStorage.getItem('selected_perimeter') as any) || 'office';
+    this.activeArea = await this.getActiveArea();
 
     // Load last action state from history
     const storedHistory = localStorage.getItem('attendance_history');
@@ -121,7 +177,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     this.geolocationService.getCurrentPosition().subscribe((position) => {
       this.currentPosition = position;
       if (position) {
-        this.isWithinGeofence = this.geofenceService.isWithinGeofence(position);
+        this.isWithinGeofence = this.activeArea ? this.geofenceService.isWithinArea(position, this.activeArea) : false;
         this.updateMapPosition();
       }
     });
@@ -144,6 +200,14 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     this.geolocationService.stopWatching();
   }
 
+  /** Memoized so ngOnInit and initMap — whichever runs first — share one fetch. */
+  private getActiveArea(): Promise<OperatingArea | null> {
+    if (!this.activeAreaPromise) {
+      this.activeAreaPromise = this.geofenceService.getOperatingArea(this.selectedPerimeter || 'office');
+    }
+    return this.activeAreaPromise;
+  }
+
   private async loadGoogleMaps() {
     if ((window as any).google && (window as any).google.maps) {
       this.google = (window as any).google;
@@ -164,11 +228,18 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   private async initMap() {
     if (!this.mapContainer || !this.google) return;
 
-    const officeCoords = this.geofenceService.getOfficeCoordinates();
+    const area = await this.getActiveArea();
+    if (!area) {
+      console.error('HomePage: could not resolve an operating area — not initializing map');
+      return;
+    }
+    const areaCoords = { lat: area.lat, lng: area.lng };
+    const isOffice = this.selectedPerimeter === 'office';
+    const areaLabel = isOffice ? 'Office Location' : 'Designated Area';
     const googleMaps = this.google.maps;
 
     this.map = new googleMaps.Map(this.mapContainer.nativeElement, {
-      center: officeCoords,
+      center: areaCoords,
       zoom: 18,
       mapTypeControl: false,
       streetViewControl: false,
@@ -208,9 +279,9 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     officeMarkerContent.style.boxSizing = 'border-box';
 
     this.officeMarker = new AdvancedMarkerElement({
-      position: officeCoords,
+      position: areaCoords,
       map: this.map,
-      title: 'Office Location',
+      title: areaLabel,
       content: officeMarkerContent,
       zIndex: 1,
     });
@@ -220,10 +291,10 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         <div style="padding: 8px 12px; font-family: 'Roboto', sans-serif; max-width: 220px;">
           <div style="font-weight: 700; color: #4285F4; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-            Office Location
+            ${areaLabel}
           </div>
           <div style="font-size: 12px; color: #5f6368; line-height: 1.4; margin-top: 4px;" id="office-address-container">
-            S.C.O. No. 11, Top Floor, Sector 17-E, Chandigarh - 160017, India
+            ${isOffice ? 'S.C.O. No. 11, Top Floor, Sector 17-E, Chandigarh - 160017, India' : 'Loading address&hellip;'}
           </div>
         </div>
       `
@@ -231,7 +302,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
 
     try {
       const geocoder = new googleMaps.Geocoder();
-      geocoder.geocode({ location: officeCoords }, (results: any, status: any) => {
+      geocoder.geocode({ location: areaCoords }, (results: any, status: any) => {
         if (status === 'OK' && results && results[0]) {
           const addressContainer = document.getElementById('office-address-container');
           if (addressContainer) {
@@ -241,7 +312,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
               <div style="padding: 8px 12px; font-family: 'Roboto', sans-serif; max-width: 220px;">
                 <div style="font-weight: 700; color: #4285F4; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                  Office Location
+                  ${areaLabel}
                 </div>
                 <div style="font-size: 12px; color: #5f6368; line-height: 1.4; margin-top: 4px;">
                   ${results[0].formatted_address}
@@ -252,7 +323,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         }
       });
     } catch (e) {
-      console.error('Error reverse geocoding office coordinates:', e);
+      console.error('Error reverse geocoding area coordinates:', e);
     }
 
     this.officeMarker.addListener('gmp-click', () => {
@@ -261,8 +332,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
 
     this.geofenceCircle = new googleMaps.Circle({
       map: this.map,
-      center: officeCoords,
-      radius: this.geofenceService.getRadiusMeters(),
+      center: areaCoords,
+      radius: area.radiusMeters,
       fillColor: '#FF0000',
       fillOpacity: 0.2,
       strokeColor: '#FF0000',
@@ -280,7 +351,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     deviceMarkerContent.style.boxSizing = 'border-box';
 
     this.deviceMarker = new AdvancedMarkerElement({
-      position: officeCoords,
+      position: areaCoords,
       map: this.map,
       title: 'Your Location',
       content: deviceMarkerContent,
@@ -334,7 +405,8 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     if (!this.deviceInfoWindow || !this.currentPosition) return;
     const lat = this.currentPosition.latitude.toFixed(6);
     const lng = this.currentPosition.longitude.toFixed(6);
-    const status = this.isWithinGeofence ? 'Inside Office Range' : 'Outside Office Range';
+    const rangeLabel = this.selectedPerimeter === 'office' ? 'Office Range' : 'Designated Area';
+    const status = this.isWithinGeofence ? `Inside ${rangeLabel}` : `Outside ${rangeLabel}`;
     const statusColor = this.isWithinGeofence ? '#2dd36f' : '#eb445a';
     this.deviceInfoWindow.setContent(
       '<div style="padding:6px 10px;font-size:13px;line-height:1.5;">' +
@@ -346,14 +418,18 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     );
   }
 
+  getRangeLabel(): string {
+    const rangeLabel = this.selectedPerimeter === 'office' ? 'Office Range' : 'Designated Area';
+    return this.isWithinGeofence ? `Within ${rangeLabel}` : `Outside ${rangeLabel}`;
+  }
+
   getDistance(): string {
-    if (!this.currentPosition) return '0.00';
-    const officeCoords = this.geofenceService.getOfficeCoordinates();
+    if (!this.currentPosition || !this.activeArea) return '0.00';
     const distance = this.geofenceService.calculateDistance(
       this.currentPosition.latitude,
       this.currentPosition.longitude,
-      officeCoords.lat,
-      officeCoords.lng
+      this.activeArea.lat,
+      this.activeArea.lng
     );
     return distance.toFixed(2);
   }
@@ -370,9 +446,13 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
     }
-    if ((this.selectedPerimeter === 'office' || !this.selectedPerimeter) && !this.isWithinGeofence) {
-      const radius = this.geofenceService.getRadiusMeters();
-      await this.showToast(`You must be within ${radius} meters of the office to check in.`, 'danger');
+    if (!this.activeArea) {
+      await this.showToast('Unable to resolve your operating area. Please try again.', 'danger');
+      return;
+    }
+    if (!this.isWithinGeofence) {
+      const areaLabel = this.selectedPerimeter === 'office' ? 'the office' : 'your designated area';
+      await this.showToast(`You must be within ${this.activeArea.radiusMeters} meters of ${areaLabel} to check in.`, 'danger');
       return;
     }
     await this.submitAttendance('check-in');
@@ -396,6 +476,15 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         {
           text: 'Confirm',
           handler: async () => {
+            // Background tracking (BLE beacon advertising / GPS posting) is gated to
+            // check-in/check-out rather than starting the moment a mode is selected —
+            // it runs as a native foreground service, so it keeps going even after the
+            // app is closed, right up until checkout stops it (or logout, as a safety net).
+            if (type === 'check-in') {
+              await this.attendanceTrackingService.startForMode(this.selectedPerimeter || 'office');
+            } else {
+              await this.attendanceTrackingService.stop();
+            }
 
             /*************************************************************************************************************** */
             //Comment below code to stop real API calling

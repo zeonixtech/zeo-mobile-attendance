@@ -4,6 +4,7 @@ import { AuthService } from '../../../services/auth';
 import { SharedApi } from 'src/app/services/shared-api';
 import { environment } from 'src/environments/environment';
 import { AlertController } from '@ionic/angular';
+import { AttendanceTrackingService } from 'src/app/services/attendance-tracking.service';
 
 @Component({
   selector: 'app-header',
@@ -23,7 +24,8 @@ export class HeaderComponent implements OnInit {
     private SharedApiService: SharedApi,
     private router: Router,
     private ngZone: NgZone,
-    private alertController: AlertController
+    private alertController: AlertController,
+    private attendanceTrackingService: AttendanceTrackingService
   ) { }
 
   async ngOnInit() {
@@ -93,6 +95,7 @@ export class HeaderComponent implements OnInit {
           text: 'Yes',
           handler: async () => {
             try {
+              await this.attendanceTrackingService.stop();
               await this.authService.logout();
               console.log('HeaderComponent: authService.logout completed');
               this.ngZone.run(() => {

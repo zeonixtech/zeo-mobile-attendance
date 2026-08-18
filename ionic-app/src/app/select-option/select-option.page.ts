@@ -89,7 +89,9 @@ export class SelectOptionPage implements OnInit {
     setTimeout(() => {
       this.isLoading = false;
       this.zone.run(() => {
-        this.router.navigate(['/home']);
+        // permission-gate requests/enforces the background-tracking permissions for
+        // the chosen mode, then starts tracking and continues on to /home itself.
+        this.router.navigate(['/permission-required']);
       });
     }, 800);
   }

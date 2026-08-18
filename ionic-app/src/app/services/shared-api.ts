@@ -49,4 +49,31 @@ export class SharedApi {
     //   }
     // });
   }
+
+  /**
+   * Resolves the caller's own per-employee BLE service UUID (used for Office-mode
+   * beacon advertising instead of one shared UUID for everyone). Returns null on
+   * any failure so callers can decide whether to retry or skip advertising.
+   */
+  async fetchBeaconIdentity(): Promise<string | null> {
+    const response: any = await this.utilityService.crmApiReq('get', environment.CRM_API + 'mobileapi/attendance/beacon-identity');
+    if (response?.statusCode === 200 && response?.response?.beaconUuid) {
+      return response.response.beaconUuid;
+    }
+    console.error('Error fetching beacon identity:', response);
+    return null;
+  }
+
+  /**
+   * The current Field Duty/Remote designated operating area (a shared dummy value
+   * until onboarding collects a real per-employee area — see crm-apis constants.js).
+   */
+  async fetchOperatingArea(): Promise<{ latitude: number; longitude: number; radiusMeters: number } | null> {
+    const response: any = await this.utilityService.crmApiReq('get', environment.CRM_API + 'mobileapi/attendance/operating-area');
+    if (response?.statusCode === 200 && response?.response) {
+      return response.response;
+    }
+    console.error('Error fetching operating area:', response);
+    return null;
+  }
 }

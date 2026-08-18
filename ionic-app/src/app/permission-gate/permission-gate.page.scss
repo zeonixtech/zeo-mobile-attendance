@@ -1,0 +1,51 @@
+.permission-gate-content {
+  --background: #f7f9fc;
+  font-family: 'Outfit', 'Inter', sans-serif;
+}
+
+.gate-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  text-align: center;
+  padding: 24px 8px;
+}
+
+.icon-wrapper {
+  margin-bottom: 20px;
+
+  ion-icon {
+    font-size: 64px;
+    color: #4a5eff;
+  }
+}
+
+.gate-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 12px 0;
+}
+
+.gate-description {
+  font-size: 15px;
+  color: #3a4356;
+  line-height: 1.5;
+  margin: 0 0 12px 0;
+  max-width: 340px;
+}
+
+.gate-note {
+  font-size: 13px;
+  color: #8a94a6;
+  line-height: 1.4;
+  margin: 0 0 24px 0;
+  max-width: 340px;
+}
+
+.gate-button {
+  width: 100%;
+  max-width: 320px;
+}

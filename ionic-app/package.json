@@ -13,7 +13,9 @@
     "android:prepare": "ionic build && node -e \"const fs=require('fs'),p='platforms/android/www';if(fs.existsSync(p)){fs.rmSync(p,{recursive:true})}fs.cpSync('www',p,{recursive:true})\"",
     "android:build": "npm run android:prepare && cordova build android",
     "android:run": "npm run android:prepare && cordova run android",
-    "android:open": "cordova platform add android"
+    "android:open": "cordova platform add android",
+    "install:plugins": "cordova plugin add ./native-plugins/cordova-plugin-background-location --nofetch && cordova plugin add ./native-plugins/cordova-plugin-ble-beacon --nofetch",
+    "postinstall": "npm run install:plugins"
   },
   "private": true,
   "dependencies": {
@@ -52,6 +54,8 @@
     "@typescript-eslint/parser": "^8.18.0",
     "cordova-android": "^15.0.0",
     "cordova-plugin-android-permissions": "^1.1.5",
+    "cordova-plugin-background-location": "file:native-plugins/cordova-plugin-background-location",
+    "cordova-plugin-ble-beacon": "file:native-plugins/cordova-plugin-ble-beacon",
     "cordova-plugin-customurlscheme": "^5.0.2",
     "cordova-plugin-inappbrowser": "^7.0.0",
     "cordova-plugin-ionic-keyboard": "^2.0.5",
@@ -99,9 +103,14 @@
       },
       "cordova-plugin-inappbrowser": {},
       "cordova-plugin-customurlscheme": {
-        "URL_SCHEME": "zeohrmapp"
+        "URL_SCHEME": "zeohrmapp",
+        "ANDROID_SCHEME": " ",
+        "ANDROID_HOST": " ",
+        "ANDROID_PATHPREFIX": "/"
       },
-      "cordova-plugin-android-permissions": {}
+      "cordova-plugin-android-permissions": {},
+      "cordova-plugin-background-location": {},
+      "cordova-plugin-ble-beacon": {}
     },
     "platforms": [
       "android"

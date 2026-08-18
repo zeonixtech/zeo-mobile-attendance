@@ -39,7 +39,7 @@
       </h2>
       <p class="status" [class.within]="isWithinGeofence" [class.outside]="!isWithinGeofence">
         <span class="status-indicator"></span>
-        {{ isWithinGeofence ? 'Within Office Range' : 'Outside Office Range' }}
+        {{ getRangeLabel() }}
       </p>
       <p class="distance" *ngIf="selectedPerimeter === 'office' && currentPosition">
         Distance: {{ getDistance() }}m from office
@@ -233,9 +233,11 @@
       <ion-icon name="home"></ion-icon>
       <ion-label>Home</ion-label>
     </ion-tab-button>
+    <!-- History tab disabled for now — feature planned for later, code kept intact.
     <ion-tab-button (click)="goToHistory()">
       <ion-icon name="list-outline"></ion-icon>
       <ion-label>History</ion-label>
     </ion-tab-button>
+    -->
   </ion-tab-bar>
 </ion-footer>

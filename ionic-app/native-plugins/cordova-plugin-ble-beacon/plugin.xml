@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="cordova-plugin-ble-beacon"
+    version="1.0.0">
+
+    <name>BleBeacon</name>
+    <description>Background BLE peripheral advertising (foreground service on Android, CoreBluetooth on iOS)</description>
+    <license>MIT</license>
+    <keywords>cordova, bluetooth, ble, beacon, background, foreground-service</keywords>
+    <repo>https://github.com/zeohrm/cordova-plugin-ble-beacon</repo>
+    <issue>https://github.com/zeohrm/cordova-plugin-ble-beacon/issues</issue>
+
+    <engines>
+        <engine name="cordova" version=">=10.0.0" />
+        <engine name="cordova-android" version=">=10.0.0" />
+    </engines>
+
+    <js-module src="www/BleBeacon.js" name="BleBeacon">
+        <clobbers target="cordova.plugins.BleBeacon" />
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="BleBeacon">
+                <param name="android-package" value="com.zeohrm.blebeacon.BleBeaconPlugin" />
+            </feature>
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+            <!-- Android 12+ (API 31+): granular Bluetooth permissions -->
+            <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+            <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+            <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+            <!-- Android 11 and below: legacy permissions -->
+            <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+            <!-- Keep advertising alive when the screen is off / after reboot -->
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+            <uses-permission android:name="android.permission.WAKE_LOCK" />
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <service
+                android:name="com.zeohrm.blebeacon.BleAdvertiserService"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="connectedDevice"
+                android:stopWithTask="false" />
+
+            <receiver
+                android:name="com.zeohrm.blebeacon.BootReceiver"
+                android:enabled="true"
+                android:exported="true">
+                <intent-filter>
+                    <action android:name="android.intent.action.BOOT_COMPLETED" />
+                    <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                </intent-filter>
+            </receiver>
+        </config-file>
+
+        <source-file src="src/android/com/zeohrm/blebeacon/BleBeaconPlugin.java"
+                     target-dir="src/com/zeohrm/blebeacon" />
+        <source-file src="src/android/com/zeohrm/blebeacon/BleAdvertiserService.java"
+                     target-dir="src/com/zeohrm/blebeacon" />
+        <source-file src="src/android/com/zeohrm/blebeacon/BootReceiver.java"
+                     target-dir="src/com/zeohrm/blebeacon" />
+
+        <framework src="androidx.core:core:1.12.0" />
+    </platform>
+
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="BleBeacon">
+                <param name="ios-package" value="BleBeaconPlugin" />
+                <param name="onload" value="true" />
+            </feature>
+        </config-file>
+
+        <!-- BLE Peripheral (advertising) permission strings shown to the user -->
+        <config-file target="*-Info.plist" parent="NSBluetoothAlwaysUsageDescription">
+            <string>This app uses Bluetooth to broadcast your presence in the office so your team knows you are in.</string>
+        </config-file>
+        <config-file target="*-Info.plist" parent="NSBluetoothPeripheralUsageDescription">
+            <string>This app uses Bluetooth to broadcast your presence in the office so your team knows you are in.</string>
+        </config-file>
+
+        <!-- Background modes required to keep BLE advertising alive when backgrounded -->
+        <config-file target="*-Info.plist" parent="UIBackgroundModes">
+            <array>
+                <string>bluetooth-central</string>
+                <string>bluetooth-peripheral</string>
+            </array>
+        </config-file>
+
+        <source-file src="src/ios/BleBeaconPlugin.swift" />
+        <framework src="CoreBluetooth.framework" />
+    </platform>
+
+</plugin>

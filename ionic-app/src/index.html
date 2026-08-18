@@ -36,6 +36,9 @@
 </head>
 
 <body>
+  <!-- Only exists on Cordova builds (platform "prepare" drops the real file into www/);
+       harmless 404 on plain web, where AuthService/Platform correctly treat that as web. -->
+  <script src="cordova.js"></script>
   <app-root></app-root>
 
   <script>

@@ -24,6 +24,10 @@ const routes: Routes = [
     canActivate: [SelectOptionGuard]
   },
   {
+    path: 'permission-required',
+    loadChildren: () => import('./permission-gate/permission-gate.module').then(m => m.PermissionGateModule)
+  },
+  {
     path: '',
     redirectTo: 'auth',
     pathMatch: 'full'

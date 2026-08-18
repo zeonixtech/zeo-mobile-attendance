@@ -6,11 +6,21 @@ import { InAppBrowser } from '@awesome-cordova-plugins/in-app-browser/ngx';
 import { Platform } from '@ionic/angular';
 import { environment } from 'src/environments/environment';
 
+declare const cordova: any;
+
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private browser: any;
+
+  /**
+   * Resolves once oauthService.configure() has actually run. AuthSigninComponent must
+   * await this (not its own separate platform.ready() call) before calling login() —
+   * two independent platform.ready() waits race unpredictably, and initLoginFlow()
+   * against an unconfigured OAuthService silently produces a broken redirect.
+   */
+  private configured: Promise<void>;
 
   constructor(
     private oauthService: OAuthService,
@@ -19,11 +29,30 @@ export class AuthService {
     private zone: NgZone,
     private platform: Platform
   ) {
-    this.configure();
+    // platform.is('cordova') is unreliable before deviceready has fired — checking it
+    // synchronously here (this service is constructed very early during bootstrap) can
+    // wrongly resolve to the web redirect URI even inside a real Cordova/Android build.
+    this.configured = this.platform.ready().then(() => this.configure());
+  }
+
+  /** Resolves once redirectUri is set and oauthService.configure() has run. */
+  public whenConfigured(): Promise<void> {
+    return this.configured;
+  }
+
+  /**
+   * platform.is('cordova') has proven unreliable on real Android builds even after
+   * platform.ready() resolves — it returned false for a login attempt confirmed (via
+   * logcat) to be running inside the app's own Cordova WebView. Checking the actual
+   * global directly is the same technique already used successfully elsewhere in this
+   * app (attendance-tracking.service.ts, tracking-permission.service.ts).
+   */
+  private isNativeApp(): boolean {
+    return typeof cordova !== 'undefined';
   }
 
   private configure() {
-    const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
+    const isMobile = this.isNativeApp();
     authCodeFlowConfig.redirectUri = isMobile
       ? commonMobileAppVariable.MOBILE_APP_NAME + '://auth/login'
       : (typeof window !== 'undefined' ? window.location.origin + '/auth/login' : environment.baseUrl + 'auth/login');
@@ -53,7 +82,7 @@ export class AuthService {
   }
 
   public async login() {
-    const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
+    const isMobile = this.isNativeApp();
     console.log('AuthService: login called, isMobile =', isMobile);
 
     if (isMobile) {
@@ -112,7 +141,14 @@ export class AuthService {
 
   public logout(): Promise<void> {
     localStorage.removeItem('selected_perimeter');
-    const isMobile = this.platform.is('cordova') || this.platform.is('capacitor');
+    // Cached per-employee BLE service UUID (attendance-tracking.service.ts) — otherwise a
+    // different account logging in on this device would silently advertise as whoever
+    // logged in previously, since it's returned from cache before any fresh lookup happens.
+    localStorage.removeItem('zeohrm_beacon_service_uuid');
+    // Cached Field Duty/Remote operating area (geofence.service.ts) — same reasoning;
+    // matters once this becomes a real per-employee area instead of a shared dummy one.
+    localStorage.removeItem('zeohrm_operating_area');
+    const isMobile = this.isNativeApp();
     console.log('AuthService: logout called, isMobile =', isMobile);
 
     if (isMobile) {
@@ -195,6 +231,24 @@ export class AuthService {
 
   public getAccessToken() {
     return this.oauthService.getAccessToken();
+  }
+
+  /** Stable WSO2 subject identifier — used as the tracked identity for background location/beacon reporting. */
+  public getUserId(): string {
+    const claims = this.getIdentityClaims() as any;
+    return claims?.sub || '';
+  }
+
+  public getUserEmail(): string {
+    const claims = this.getIdentityClaims() as any;
+    return claims?.email || '';
+  }
+
+  public getUserDisplayName(): string {
+    const claims = this.getIdentityClaims() as any;
+    const givenName = claims?.given_name || '';
+    const familyName = claims?.family_name || '';
+    return `${givenName} ${familyName}`.trim();
   }
 
   public getTokenFromCookie(cookieName: string = 'token'): string | null {

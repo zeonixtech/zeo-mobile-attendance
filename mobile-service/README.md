@@ -1,1 +1,0 @@
-# zeo-mobile-attendance service

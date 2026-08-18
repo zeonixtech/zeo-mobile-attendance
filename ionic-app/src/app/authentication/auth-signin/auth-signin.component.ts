@@ -59,8 +59,11 @@ export class AuthSigninComponent implements OnInit, ViewWillEnter {
 
   ionViewWillEnter() {
     console.log('AuthSigninComponent: ionViewWillEnter starting');
-    this.platform.ready().then(() => {
-      console.log('AuthSigninComponent: Platform ready resolved');
+    // Wait for AuthService's own oauthService.configure() to have run — a separate
+    // platform.ready() wait here can resolve before (or after) AuthService's, and calling
+    // login() against an unconfigured OAuthService silently breaks the redirect.
+    this.authService.whenConfigured().then(() => {
+      console.log('AuthSigninComponent: AuthService configured');
       // Prevent triggering a new login flow if the URL contains an auth code (callback phase)
       const hasCode = typeof window !== 'undefined' &&
         (window.location.search.includes('code=') || window.location.hash.includes('code='));

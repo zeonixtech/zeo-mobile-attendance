@@ -42,7 +42,10 @@ export class AppComponent implements OnInit {
       const currentUrl = this.router.url;
       const hasPerimeterSet = !!localStorage.getItem('selected_perimeter');
 
-      if (currentUrl.startsWith('/select-option')) {
+      if (currentUrl.startsWith('/permission-required')) {
+        // Non-dismissible — required permissions haven't been granted yet.
+        this.exitApp();
+      } else if (currentUrl.startsWith('/select-option')) {
         // If they already have a perimeter (i.e. switching mode), go back to home
         if (hasPerimeterSet) {
           this.router.navigate(['/home']);

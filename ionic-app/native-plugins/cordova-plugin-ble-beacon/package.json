@@ -1,0 +1,23 @@
+{
+  "name": "cordova-plugin-ble-beacon",
+  "version": "1.0.0",
+  "description": "Background BLE peripheral advertising (foreground service on Android, CoreBluetooth on iOS)",
+  "cordova": {
+    "id": "cordova-plugin-ble-beacon",
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  },
+  "keywords": [
+    "cordova",
+    "bluetooth",
+    "ble",
+    "beacon",
+    "background",
+    "foreground-service",
+    "ecosystem:cordova"
+  ],
+  "author": "ZeoHRM Team",
+  "license": "MIT"
+}

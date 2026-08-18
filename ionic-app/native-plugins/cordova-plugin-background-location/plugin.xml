@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="cordova-plugin-background-location"
+    version="1.0.0">
+
+    <name>BackgroundLocation</name>
+    <description>Background location tracking with foreground service for Android</description>
+    <license>MIT</license>
+    <keywords>cordova, location, background, foreground-service, android</keywords>
+    <repo>https://github.com/zeohrm/cordova-plugin-background-location</repo>
+    <issue>https://github.com/zeohrm/cordova-plugin-background-location/issues</issue>
+
+    <engines>
+        <engine name="cordova" version=">=10.0.0" />
+        <engine name="cordova-android" version=">=10.0.0" />
+    </engines>
+
+    <js-module src="www/BackgroundLocation.js" name="BackgroundLocation">
+        <clobbers target="cordova.plugins.BackgroundLocation" />
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="BackgroundLocation">
+                <param name="android-package" value="com.zeohrm.backgroundlocation.BackgroundLocationPlugin" />
+            </feature>
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <!-- Foreground service permissions -->
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+            <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+            <uses-permission android:name="android.permission.WAKE_LOCK" />
+            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+            <!-- Network permissions for sending data -->
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <!-- Foreground Service -->
+            <service
+                android:name="com.zeohrm.backgroundlocation.BackgroundLocationService"
+                android:enabled="true"
+                android:exported="false"
+                android:foregroundServiceType="location"
+                android:stopWithTask="false" />
+            
+            <!-- Boot receiver to restart service on device reboot -->
+            <receiver
+                android:name="com.zeohrm.backgroundlocation.BootReceiver"
+                android:enabled="true"
+                android:exported="true">
+                <intent-filter>
+                    <action android:name="android.intent.action.BOOT_COMPLETED" />
+                    <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                </intent-filter>
+            </receiver>
+        </config-file>
+
+        <source-file src="src/android/com/zeohrm/backgroundlocation/BackgroundLocationPlugin.java" 
+                     target-dir="src/com/zeohrm/backgroundlocation" />
+        <source-file src="src/android/com/zeohrm/backgroundlocation/BackgroundLocationService.java" 
+                     target-dir="src/com/zeohrm/backgroundlocation" />
+        <source-file src="src/android/com/zeohrm/backgroundlocation/BootReceiver.java" 
+                     target-dir="src/com/zeohrm/backgroundlocation" />
+
+        <resource-file src="src/android/res/drawable/ic_notification.xml" 
+                       target="res/drawable/ic_notification.xml" />
+        <resource-file src="src/android/res/drawable-v24/ic_notification.xml" 
+                       target="res/drawable-v24/ic_notification.xml" />
+
+        <framework src="com.google.android.gms:play-services-location:21.0.1" />
+        <framework src="androidx.core:core:1.12.0" />
+        <framework src="androidx.lifecycle:lifecycle-process:2.7.0" />
+    </platform>
+
+</plugin>

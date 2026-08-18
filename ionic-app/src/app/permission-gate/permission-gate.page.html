@@ -1,0 +1,30 @@
+<ion-content class="ion-padding permission-gate-content">
+  <div class="gate-container">
+    <div class="icon-wrapper">
+      <ion-icon [name]="mode === 'office' ? 'bluetooth-outline' : 'location-outline'"></ion-icon>
+    </div>
+
+    <ng-container *ngIf="state === 'checking'">
+      <ion-spinner name="crescent"></ion-spinner>
+    </ng-container>
+
+    <ng-container *ngIf="state === 'denied' || state === 'granting'">
+      <h1 class="gate-title">Permission Required</h1>
+      <p class="gate-description">{{ modeDescription }}</p>
+      <p class="gate-note">This app cannot be used without granting this permission.</p>
+      <ion-button expand="block" class="gate-button" [disabled]="state === 'granting'" (click)="requestPermission()">
+        <span *ngIf="state !== 'granting'">Grant Permission</span>
+        <ion-spinner *ngIf="state === 'granting'" name="crescent"></ion-spinner>
+      </ion-button>
+    </ng-container>
+
+    <ng-container *ngIf="state === 'permanently-denied'">
+      <h1 class="gate-title">Permission Blocked</h1>
+      <p class="gate-description">{{ modeDescription }}</p>
+      <p class="gate-note">Android has blocked the in-app prompt after repeated denials. Please enable the permission from Settings, then come back to this screen.</p>
+      <ion-button expand="block" class="gate-button" (click)="openSettings()">
+        Open Settings
+      </ion-button>
+    </ng-container>
+  </div>
+</ion-content>
