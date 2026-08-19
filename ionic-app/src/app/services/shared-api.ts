@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { Utility } from './utility';
 import { environment } from 'src/environments/environment';
+import { DeviceInfo } from './device-info.service';
+import { HistoryEntry } from '../attendance/attendance.page';
 
 
 @Injectable({
@@ -75,5 +77,56 @@ export class SharedApi {
     }
     console.error('Error fetching operating area:', response);
     return null;
+  }
+
+  /**
+   * Records a single check-in/check-out tap. Session-authenticated like beacon-identity/
+   * operating-area above — this runs from the foreground WebView, not the native background
+   * service, so it carries the logged-in session rather than the location-ping API key.
+   */
+  async postCheckEvent(
+    type: 'check-in' | 'check-out',
+    mode: string,
+    latitude: number,
+    longitude: number,
+    isMock: boolean,
+    deviceInfo?: DeviceInfo | null
+  ): Promise<boolean> {
+    const response: any = await this.utilityService.crmApiReq('post', environment.CRM_API + 'mobileapi/attendance/event', {
+      type,
+      mode,
+      latitude,
+      longitude,
+      isMock,
+      timestamp: Date.now(),
+      deviceId: deviceInfo?.imei,
+      deviceModel: deviceInfo?.model,
+      platform: deviceInfo?.platform
+    });
+    if (response?.statusCode === 201) {
+      return true;
+    }
+    console.error('Error posting check event:', response);
+    return false;
+  }
+
+  /**
+   * The caller's own check-in/check-out history plus overlapping company holidays. Omit
+   * start/end to get the endpoint's default (last 24 months) — used as-is by the Home page
+   * to derive current check-in state, and with explicit range by the History tab's filters.
+   */
+  async fetchAttendanceHistory(start?: string, end?: string): Promise<HistoryEntry[]> {
+    let url = environment.CRM_API + 'mobileapi/attendance/history';
+    const params: string[] = [];
+    if (start) params.push(`start=${start}`);
+    if (end) params.push(`end=${end}`);
+    if (params.length) url += '?' + params.join('&');
+
+    const response: any = await this.utilityService.crmApiReq('get', url);
+    if (response?.statusCode === 200 && response?.response?.events) {
+      return response.response.events;
+    }
+    console.error('Error fetching attendance history:', response);
+    return [];
   }
 }

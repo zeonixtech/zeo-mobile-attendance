@@ -37,6 +37,9 @@ public class BleBeaconPlugin extends CordovaPlugin {
             case "getStatus":
                 getStatus(callbackContext);
                 return true;
+            case "isBluetoothEnabled":
+                isBluetoothEnabled(callbackContext);
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
@@ -108,6 +111,20 @@ public class BleBeaconPlugin extends CordovaPlugin {
             callbackContext.success(result);
         } catch (JSONException e) {
             callbackContext.error("Error getting status: " + e.getMessage());
+        }
+    }
+
+    private void isBluetoothEnabled(CallbackContext callbackContext) {
+        try {
+            android.bluetooth.BluetoothManager btManager =
+                (android.bluetooth.BluetoothManager) cordova.getActivity().getSystemService(Context.BLUETOOTH_SERVICE);
+            android.bluetooth.BluetoothAdapter btAdapter = btManager != null ? btManager.getAdapter() : null;
+            boolean enabled = btAdapter != null && btAdapter.isEnabled();
+            JSONObject result = new JSONObject();
+            result.put("enabled", enabled);
+            callbackContext.success(result);
+        } catch (JSONException e) {
+            callbackContext.error("Error checking Bluetooth state: " + e.getMessage());
         }
     }
 

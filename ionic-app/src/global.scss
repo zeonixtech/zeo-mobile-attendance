@@ -26,6 +26,19 @@
 @import "@ionic/angular/css/flex-utils.css";
 
 /**
+ * This Cordova WebView is not edge-to-edge — Android already reserves system
+ * bar space outside the WebView's own bounds (confirmed via the WebView's
+ * screenY/height not covering the status/nav bars), so there is no OS chrome
+ * overlapping the page content that env(safe-area-inset-*) needs to avoid.
+ * Ionic's built-in components (e.g. ion-tab-bar) apply this variable to their
+ * own internal padding by default, which otherwise doubles up on space the
+ * native Activity already reserved, producing an oversized empty footer.
+ */
+:root {
+  --ion-safe-area-bottom: 0px;
+}
+
+/**
  * Ionic Dark Mode
  * -----------------------------------------------------
  * For more info, please see:
@@ -129,7 +142,6 @@ ion-tab-bar {
   --background: #ffffff;
   --border: 1px solid rgba(0, 0, 0, 0.06);
   height: 62px;
-  padding-bottom: env(safe-area-inset-bottom);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
   
   ion-tab-button {
@@ -198,12 +210,12 @@ app-header ion-header,
   .md ion-toolbar,
   .ios ion-toolbar {
     --padding-top: 0px !important;
-    --padding-bottom: 0px !important;
+    --padding-bottom: 10px !important;
     --padding-start: 12px !important;
     --padding-end: 12px !important;
-    --min-height: 52px !important;
-    min-height: 52px !important;
-    height: 52px !important;
+    --min-height: 62px !important;
+    min-height: 62px !important;
+    height: 62px !important;
     --background: linear-gradient(135deg, #00b4fd 0%, #0062e3 100%) !important;
     --color: #ffffff !important;
     --border-style: none !important;

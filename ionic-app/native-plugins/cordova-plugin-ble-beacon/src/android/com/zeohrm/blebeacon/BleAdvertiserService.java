@@ -44,6 +44,8 @@ public class BleAdvertiserService extends Service {
 
     private static final String CHANNEL_ID = "ble_beacon_channel";
     private static final int NOTIFICATION_ID = 1002;
+    private static final String WARNING_CHANNEL_ID = "ble_beacon_warning_channel";
+    private static final int WARNING_NOTIFICATION_ID = 1003;
     private static final String TAG = "BleAdvertiserService";
 
     private BluetoothLeAdvertiser advertiser;
@@ -77,19 +79,27 @@ public class BleAdvertiserService extends Service {
             @Override
             public void onReceive(Context context, Intent intent) {
                 int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
-                if (state != BluetoothAdapter.STATE_ON) return;
 
                 SharedPreferences prefs = getSharedPreferences(BootReceiver.PREFS_NAME, Context.MODE_PRIVATE);
                 boolean shouldBeAdvertising = prefs.getBoolean(BootReceiver.KEY_ADVERTISING, false);
                 if (!shouldBeAdvertising) return;
 
-                String userUuid = prefs.getString(BootReceiver.KEY_USER_UUID, null);
-                String companyUuid = prefs.getString(BootReceiver.KEY_COMPANY_UUID, null);
-                String userName = prefs.getString(BootReceiver.KEY_USER_NAME, "UNKNOWN");
-                if (userUuid == null || companyUuid == null) return;
+                if (state == BluetoothAdapter.STATE_ON) {
+                    String userUuid = prefs.getString(BootReceiver.KEY_USER_UUID, null);
+                    String companyUuid = prefs.getString(BootReceiver.KEY_COMPANY_UUID, null);
+                    String userName = prefs.getString(BootReceiver.KEY_USER_NAME, "UNKNOWN");
+                    if (userUuid == null || companyUuid == null) return;
 
-                Log.i(TAG, "Bluetooth re-enabled — resuming advertising for " + userName);
-                startAdvertising(userUuid, companyUuid, userName);
+                    Log.i(TAG, "Bluetooth re-enabled — resuming advertising for " + userName);
+                    startAdvertising(userUuid, companyUuid, userName);
+                } else if (state == BluetoothAdapter.STATE_OFF) {
+                    // The persistent "Beacon Active" notification (see buildNotification()) stays
+                    // silent/ongoing by design and doesn't surface this — without an explicit alert
+                    // here, tracking silently stops with no signal to the user, especially if the
+                    // app itself isn't open to catch it via the WebView-side poll.
+                    Log.w(TAG, "Bluetooth disabled while advertising was expected to be running");
+                    notifyBluetoothDisabled();
+                }
             }
         };
         ContextCompat.registerReceiver(
@@ -246,9 +256,39 @@ public class BleAdvertiserService extends Service {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID, "BLE Beacon", NotificationManager.IMPORTANCE_LOW); // silent, no sound
             channel.setDescription("Shows while broadcasting your presence");
+
+            // Separate, higher-importance channel for the Bluetooth-disabled warning — the
+            // channel above is deliberately silent/low-priority, but this warning should
+            // actually surface to the user, not blend into the ongoing "beacon active" notification.
+            NotificationChannel warningChannel = new NotificationChannel(
+                    WARNING_CHANNEL_ID, "Bluetooth Warnings", NotificationManager.IMPORTANCE_DEFAULT);
+            warningChannel.setDescription("Alerts when Bluetooth is turned off during Office tracking");
+
             NotificationManager nm = getSystemService(NotificationManager.class);
-            if (nm != null) nm.createNotificationChannel(channel);
+            if (nm != null) {
+                nm.createNotificationChannel(channel);
+                nm.createNotificationChannel(warningChannel);
+            }
         }
+    }
+
+    private void notifyBluetoothDisabled() {
+        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, 0, launchIntent != null ? launchIntent : new Intent(),
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, WARNING_CHANNEL_ID)
+                .setContentTitle("Bluetooth Disabled")
+                .setContentText("Bluetooth was turned off — Office attendance tracking has stopped. Please re-enable it.")
+                .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm != null) nm.notify(WARNING_NOTIFICATION_ID, builder.build());
     }
 
     private Notification buildNotification(String userName) {

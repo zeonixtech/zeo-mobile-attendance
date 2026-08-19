@@ -24,20 +24,28 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
+
 public class BackgroundLocationPlugin extends CordovaPlugin {
     private static final String TAG = "BackgroundLocationPlugin";
     private static final int PERMISSION_REQUEST_CODE = 1001;
     private static final int BACKGROUND_PERMISSION_REQUEST_CODE = 1002;
-    
+
     private CallbackContext permissionCallbackContext;
     private CallbackContext startCallbackContext;
     private boolean isServiceRunning = false;
+    private FusedLocationProviderClient fusedLocationClient;
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         Log.d(TAG, "Plugin initialized");
-        
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(cordova.getActivity());
+
         // Check if service is already running
         checkServiceStatus();
     }
@@ -59,11 +67,17 @@ public class BackgroundLocationPlugin extends CordovaPlugin {
             case "getCurrentLocation":
                 getCurrentLocation(callbackContext);
                 return true;
+            case "checkMockLocation":
+                checkMockLocation(callbackContext);
+                return true;
             case "requestPermissions":
                 requestPermissions(callbackContext);
                 return true;
             case "openAppSettings":
                 openAppSettings(callbackContext);
+                return true;
+            case "isLocationServiceEnabled":
+                isLocationServiceEnabled(callbackContext);
                 return true;
             default:
                 callbackContext.error("Unknown action: " + action);
@@ -84,6 +98,19 @@ public class BackgroundLocationPlugin extends CordovaPlugin {
         } catch (Exception e) {
             Log.e(TAG, "Error opening app settings", e);
             callbackContext.error("Failed to open settings: " + e.getMessage());
+        }
+    }
+
+    private void isLocationServiceEnabled(CallbackContext callbackContext) {
+        try {
+            android.location.LocationManager lm =
+                (android.location.LocationManager) cordova.getActivity().getSystemService(Context.LOCATION_SERVICE);
+            boolean enabled = lm != null && androidx.core.location.LocationManagerCompat.isLocationEnabled(lm);
+            JSONObject result = new JSONObject();
+            result.put("enabled", enabled);
+            callbackContext.success(result);
+        } catch (JSONException e) {
+            callbackContext.error("Error checking location service state: " + e.getMessage());
         }
     }
 
@@ -200,6 +227,46 @@ public class BackgroundLocationPlugin extends CordovaPlugin {
             callbackContext.success(result);
         } catch (JSONException e) {
             callbackContext.error("Error getting location: " + e.getMessage());
+        }
+    }
+
+    /**
+     * One-shot fresh location fix used to gate Check In/Check Out at the moment of
+     * confirming — distinct from the periodic background service, and from
+     * getCurrentLocation() above (which never actually queries a location). Uses
+     * getCurrentLocation() on the fused client (not getLastLocation()) so a stale cached
+     * fix from before mock location was turned on can't slip past the check.
+     */
+    private void checkMockLocation(final CallbackContext callbackContext) {
+        if (!hasLocationPermissions()) {
+            callbackContext.error("Location permissions not granted");
+            return;
+        }
+
+        try {
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, new CancellationTokenSource().getToken())
+                .addOnSuccessListener(cordova.getActivity(), location -> {
+                    if (location == null) {
+                        callbackContext.error("Unable to get current location");
+                        return;
+                    }
+                    try {
+                        JSONObject result = new JSONObject();
+                        result.put("latitude", location.getLatitude());
+                        result.put("longitude", location.getLongitude());
+                        result.put("accuracy", location.getAccuracy());
+                        result.put("isMock", location.isFromMockProvider());
+                        callbackContext.success(result);
+                    } catch (JSONException e) {
+                        callbackContext.error("Error building location result: " + e.getMessage());
+                    }
+                })
+                .addOnFailureListener(cordova.getActivity(), e -> {
+                    Log.e(TAG, "Error getting current location: " + e.getMessage());
+                    callbackContext.error("Failed to get current location: " + e.getMessage());
+                });
+        } catch (SecurityException e) {
+            callbackContext.error("Security exception requesting location: " + e.getMessage());
         }
     }
 

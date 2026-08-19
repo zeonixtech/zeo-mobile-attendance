@@ -34,6 +34,16 @@ var BleBeacon = {
         return new Promise(function (resolve, reject) {
             exec(resolve, reject, 'BleBeacon', 'getStatus', []);
         });
+    },
+
+    /**
+     * Check whether the device's Bluetooth adapter is currently enabled.
+     * @returns {Promise<{enabled: boolean}>}
+     */
+    isBluetoothEnabled: function () {
+        return new Promise(function (resolve, reject) {
+            exec(resolve, reject, 'BleBeacon', 'isBluetoothEnabled', []);
+        });
     }
 };
 

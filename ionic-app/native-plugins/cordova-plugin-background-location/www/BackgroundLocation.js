@@ -62,6 +62,27 @@ var BackgroundLocation = {
     },
 
     /**
+     * Fresh one-shot location fix with mock-provider detection — used to gate
+     * Check In/Check Out at the moment of confirming.
+     * @returns {Promise<{latitude: number, longitude: number, accuracy: number, isMock: boolean}>}
+     */
+    checkMockLocation: function() {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, 'BackgroundLocation', 'checkMockLocation', []);
+        });
+    },
+
+    /**
+     * Check whether the device's Location service (GPS/network provider) is currently enabled.
+     * @returns {Promise<{enabled: boolean}>}
+     */
+    isLocationServiceEnabled: function() {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, 'BackgroundLocation', 'isLocationServiceEnabled', []);
+        });
+    },
+
+    /**
      * Listen for location updates
      * @param {Function} callback - Called with location data
      * @returns {Function} Unsubscribe function

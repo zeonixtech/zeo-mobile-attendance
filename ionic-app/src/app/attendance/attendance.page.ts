@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { MenuController, ViewWillEnter } from '@ionic/angular';
+import { SharedApi } from '../services/shared-api';
 
 export interface HistoryEntry {
   type: 'check-in' | 'check-out' | 'leave' | 'holiday';
@@ -33,7 +34,7 @@ export interface DateGroupedAttendance {
   styleUrls: ['./attendance.page.scss'],
   standalone: false,
 })
-export class AttendancePage implements OnInit, ViewWillEnter {
+export class AttendancePage implements ViewWillEnter {
   groupedRecords: DateGroupedAttendance[] = [];
   allHistoryEntries: HistoryEntry[] = [];
 
@@ -56,37 +57,24 @@ export class AttendancePage implements OnInit, ViewWillEnter {
 
   constructor(
     private router: Router,
-    private menuController: MenuController
+    private menuController: MenuController,
+    private sharedApiService: SharedApi
   ) { }
 
   async ionViewWillEnter() {
     await this.menuController.enable(true, 'attendance-content-menu');
     await this.menuController.enable(false, 'home-content-menu');
     await this.menuController.close('attendance-content-menu');
+
+    // AttendancePage is a reused component instance across Ionic navigation, so
+    // ngOnInit() alone would only ever fetch once per app session — re-fetch on
+    // every entry so server-side changes (new holidays, check-ins from elsewhere)
+    // show up without a full app restart.
+    await this.loadHistory();
   }
 
-  ngOnInit() {
-    this.loadHistory();
-  }
-
-  loadHistory() {
-    let history: HistoryEntry[] = [];
-    const stored = localStorage.getItem('attendance_history');
-    const hasRichMock = localStorage.getItem('attendance_history_sunday_holiday');
-    const hasMultipleMock = localStorage.getItem('attendance_history_multiple_logs');
-
-    if (stored && hasRichMock && hasMultipleMock) {
-      history = JSON.parse(stored);
-      // Sort first to ensure history[0] is the latest entry
-      history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      this.fillGapInHistory(history);
-    } else {
-      // Prepopulate with mock data if history is empty or old
-      history = this.generateMockHistory();
-      localStorage.setItem('attendance_history', JSON.stringify(history));
-      localStorage.setItem('attendance_history_sunday_holiday', 'true');
-      localStorage.setItem('attendance_history_multiple_logs', 'true');
-    }
+  async loadHistory() {
+    const history = await this.sharedApiService.fetchAttendanceHistory();
 
     // Sort by timestamp descending
     history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -102,45 +90,6 @@ export class AttendancePage implements OnInit, ViewWillEnter {
     }
 
     this.applyFilters();
-  }
-
-  private fillGapInHistory(history: HistoryEntry[]) {
-    if (history.length === 0) return;
-
-    const latestDate = new Date(history[0].timestamp);
-    if (isNaN(latestDate.getTime())) return;
-    latestDate.setHours(0, 0, 0, 0);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (latestDate.getTime() < today.getTime()) {
-      const diffTime = today.getTime() - latestDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      const newRecords: HistoryEntry[] = [];
-      for (let i = 1; i <= diffDays; i++) {
-        const date = new Date(latestDate);
-        date.setDate(latestDate.getDate() + i);
-        const day = date.getDay();
-        if (day === 0) {
-          // Sunday is a Holiday!
-          newRecords.push({
-            type: 'holiday',
-            timestamp: date.toISOString(),
-            mode: 'Sunday'
-          });
-          continue;
-        }
-
-        this.addMockRecordPair(newRecords, date);
-      }
-
-      if (newRecords.length > 0) {
-        history.push(...newRecords);
-        localStorage.setItem('attendance_history', JSON.stringify(history));
-      }
-    }
   }
 
   getCurrentWeekBounds() {
@@ -314,165 +263,6 @@ export class AttendancePage implements OnInit, ViewWillEnter {
         this.infiniteScrollDisabled = true;
       }
     }, 800);
-  }
-
-  private generateMockHistory(): HistoryEntry[] {
-    const records: HistoryEntry[] = [];
-    const baseDate = new Date();
-
-    // 1. Daily for the last 30 days:
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(baseDate);
-      date.setDate(baseDate.getDate() - i);
-      const day = date.getDay();
-
-      if (day === 0) {
-        // Sunday is always a holiday!
-        records.push({
-          type: 'holiday',
-          timestamp: date.toISOString(),
-          mode: 'Sunday'
-        });
-        continue;
-      }
-
-      // Add a couple of leave days for variety
-      if (i === 5) {
-        records.push({
-          type: 'leave',
-          timestamp: date.toISOString(),
-          mode: 'Sick Leave'
-        });
-      } else if (i === 12) {
-        records.push({
-          type: 'leave',
-          timestamp: date.toISOString(),
-          mode: 'Casual Leave'
-        });
-      } else if (i === 2) {
-        // Multiple check-in/check-out for yesterday / 2 days ago
-        const checkIn1 = new Date(date);
-        checkIn1.setHours(9, 5, 0);
-        
-        const checkOut1 = new Date(date);
-        checkOut1.setHours(13, 15, 0);
-
-        const checkIn2 = new Date(date);
-        checkIn2.setHours(14, 10, 0);
-
-        const checkOut2 = new Date(date);
-        checkOut2.setHours(18, 25, 0);
-
-        records.push({
-          type: 'check-in',
-          timestamp: checkIn1.toISOString(),
-          latitude: 30.740416,
-          longitude: 76.780692,
-          mode: 'Office'
-        });
-        records.push({
-          type: 'check-out',
-          timestamp: checkOut1.toISOString(),
-          latitude: 30.740416,
-          longitude: 76.780692,
-          mode: 'Office'
-        });
-        records.push({
-          type: 'check-in',
-          timestamp: checkIn2.toISOString(),
-          latitude: 30.740510,
-          longitude: 76.780710,
-          mode: 'Field Duty'
-        });
-        records.push({
-          type: 'check-out',
-          timestamp: checkOut2.toISOString(),
-          latitude: 30.740416,
-          longitude: 76.780692,
-          mode: 'Office'
-        });
-      } else {
-        this.addMockRecordPair(records, date);
-      }
-    }
-
-    // 2. A few records per month for the last 18 months
-    const start = new Date(baseDate);
-    start.setMonth(baseDate.getMonth() - 18);
-
-    let current = new Date(start);
-    let mockLeaveCounter = 0;
-    while (current < baseDate) {
-      // Don't duplicate the current month since we already have daily entries for the last 30 days
-      if (current.getMonth() !== baseDate.getMonth() || current.getFullYear() !== baseDate.getFullYear()) {
-        // Add all Sundays for this past month as holidays
-        const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
-        for (let d = 1; d <= daysInMonth; d++) {
-          const date = new Date(current.getFullYear(), current.getMonth(), d);
-          if (date.getDay() === 0) {
-            records.push({
-              type: 'holiday',
-              timestamp: date.toISOString(),
-              mode: 'Sunday'
-            });
-          }
-        }
-
-        // Add 2 random working days in this month
-        for (let j = 0; j < 2; j++) {
-          const mockDate = new Date(current.getFullYear(), current.getMonth(), 10 + j * 7);
-          const day = mockDate.getDay();
-          if (day === 0) continue; // Skip Sunday
-
-          // Occasionally add a Leave entry in past months
-          if (j === 1 && mockLeaveCounter % 4 === 0) {
-            records.push({
-              type: 'leave',
-              timestamp: mockDate.toISOString(),
-              mode: mockLeaveCounter % 8 === 0 ? 'Casual Leave' : 'Privilege Leave'
-            });
-          } else {
-            this.addMockRecordPair(records, mockDate);
-          }
-          mockLeaveCounter++;
-        }
-      }
-      current.setMonth(current.getMonth() + 1);
-    }
-
-    return records;
-  }
-
-  private addMockRecordPair(records: HistoryEntry[], date: Date) {
-    const day = date.getDay();
-    if (day === 0) return; // Skip only Sunday (Saturday is a working day)
-
-    // Check-in at 9:00 AM + random minutes
-    const checkInTime = new Date(date);
-    checkInTime.setHours(9, Math.floor(Math.random() * 30), 0);
-
-    // Check-out at 6:00 PM + random minutes
-    const checkOutTime = new Date(date);
-    checkOutTime.setHours(18, Math.floor(Math.random() * 30), 0);
-
-    const modes = ['Office', 'Field Duty', 'Remote Work'];
-    const mode = modes[Math.floor(Math.random() * modes.length)];
-
-    records.push({
-      type: 'check-in',
-      timestamp: checkInTime.toISOString(),
-      latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-      longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
-      mode: mode
-    });
-
-    records.push({
-      type: 'check-out',
-      timestamp: checkOutTime.toISOString(),
-      latitude: 30.740416 + (Math.random() - 0.5) * 0.0001,
-      longitude: 76.780692 + (Math.random() - 0.5) * 0.0001,
-      mode: mode
-    });
   }
 
   goToHome() {

@@ -5,11 +5,11 @@ import { Router } from '@angular/router';
 import { GeolocationService, DevicePosition } from '../services/geolocation.service';
 import { DeviceInfoService, DeviceInfo } from '../services/device-info.service';
 import { GeofenceService, OperatingArea } from '../services/geofence.service';
-import { AttendanceApiService } from '../services/attendance-api.service';
 import { AttendanceTrackingService } from '../services/attendance-tracking.service';
 import { AuthService } from '../services/auth';
 import { environment } from '../../environments/environment';
 import { SharedApi } from '../services/shared-api';
+import { HistoryEntry } from '../attendance/attendance.page';
 
 @Component({
   selector: 'app-home',
@@ -34,8 +34,9 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   activeArea: OperatingArea | null = null;
   private activeAreaPromise: Promise<OperatingArea | null> | null = null;
   lastCheckInTime: string | null = null;
-  todayLogs: any[] = [];
+  todayLogs: HistoryEntry[] = [];
   showTodayLogs = false;
+  private allHistoryEntries: HistoryEntry[] = [];
 
   private positionSub!: Subscription;
   private map: any;
@@ -51,7 +52,6 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     private geolocationService: GeolocationService,
     private deviceInfoService: DeviceInfoService,
     private geofenceService: GeofenceService,
-    private attendanceApiService: AttendanceApiService,
     private attendanceTrackingService: AttendanceTrackingService,
     private alertController: AlertController,
     private toastController: ToastController,
@@ -145,29 +145,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
 
     this.activeArea = await this.getActiveArea();
 
-    // Load last action state from history
-    const storedHistory = localStorage.getItem('attendance_history');
-    if (storedHistory) {
-      try {
-        const history = JSON.parse(storedHistory);
-        if (history.length > 0) {
-          history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          this.lastAction = history[0].type;
-
-          if (this.lastAction === 'check-in') {
-            const lastCheckIn = history
-              .filter((a: any) => a.type === 'check-in')
-              .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-            if (lastCheckIn) {
-              this.lastCheckInTime = lastCheckIn.timestamp;
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Error loading last action from history:', e);
-      }
-    }
-    this.loadTodayLogs();
+    await this.refreshAttendanceState();
 
     await this.deviceInfoService.loadDeviceInfo();
     this.deviceInfo = this.deviceInfoService.getDeviceInfo();
@@ -198,6 +176,7 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
 
   ngOnDestroy() {
     this.geolocationService.stopWatching();
+    this.stopServiceMonitor();
   }
 
   /** Memoized so ngOnInit and initMap — whichever runs first — share one fetch. */
@@ -442,6 +421,19 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   }
 
   async onCheckIn() {
+    const locationOk = await this.geolocationService.requestHighAccuracy();
+    if (!locationOk) {
+      return; // alert already shown inside requestHighAccuracy()
+    }
+
+    if (this.selectedPerimeter === 'office') {
+      const bluetoothOk = await this.attendanceTrackingService.isBluetoothEnabled();
+      if (!bluetoothOk) {
+        await this.showBluetoothDisabledAlert();
+        return;
+      }
+    }
+
     if (!this.currentPosition || !this.deviceInfo) {
       await this.showToast('Unable to get your location. Please try again.', 'danger');
       return;
@@ -476,6 +468,16 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
         {
           text: 'Confirm',
           handler: async () => {
+            // Fresh native fix, checked right at the moment of confirming — this is the
+            // actual fraud moment (spoofing GPS to fake being in-office/in-area), and the
+            // live map's navigator.geolocation position has no mock-provider visibility
+            // at all, so this can't be folded into the existing geofence check above.
+            const mockCheck = await this.attendanceTrackingService.checkMockLocation();
+            if (mockCheck?.isMock) {
+              await this.showToast('Fake/mock location detected. Please disable mock location apps and try again.', 'danger');
+              return;
+            }
+
             // Background tracking (BLE beacon advertising / GPS posting) is gated to
             // check-in/check-out rather than starting the moment a mode is selected —
             // it runs as a native foreground service, so it keeps going even after the
@@ -486,65 +488,39 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
               await this.attendanceTrackingService.stop();
             }
 
-            /*************************************************************************************************************** */
-            //Comment below code to stop real API calling
             this.isLoading = true;
+            const success = await this.SharedApiService.postCheckEvent(
+              type,
+              modeStr,
+              this.currentPosition!.latitude,
+              this.currentPosition!.longitude,
+              mockCheck?.isMock === true,
+              this.deviceInfo
+            );
             this.isLoading = false;
-            this.lastAction = type;
-            this.saveToHistory(type, modeStr);
 
-            if (type === 'check-in') {
-              this.lastCheckInTime = new Date().toISOString();
-            } else {
-              this.lastCheckInTime = null;
+            if (!success) {
+              await this.showToast(`Failed to ${type === 'check-in' ? 'check in' : 'check out'}. Please try again.`, 'danger');
+              return;
             }
 
-            this.loadTodayLogs();
-            let response: any = await this.attendanceApiService.postAttendance(type, this.currentPosition!, this.deviceInfo!, modeStr)
-
-            const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
-            await this.showToast(msg, 'success');
-            //Comment above code to stop real API calling
-
-            /*************************************************************************************************************** */
-
-            //Uncomment below code to call real API
-            /*
-            this.isLoading = true;
-            this.attendanceApiService
-              .postAttendance(type, this.currentPosition!, this.deviceInfo!, modeStr)
-              .subscribe({
-                next: async (response) => {
-                  this.isLoading = false;
-                  this.lastAction = type;
-                  this.saveToHistory(type, modeStr);
-
-                  if (type === 'check-in') {
-                    this.lastCheckInTime = new Date().toISOString();
-                  } else {
-                    this.lastCheckInTime = null;
-                  }
-
-                  this.loadTodayLogs();
-
-                  const msg = response.message || `${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`;
-                  await this.showToast(msg, 'success');
-                },
-                error: async (error) => {
-                  this.isLoading = false;
-                  console.error('API Error:', error);
-                  await this.showToast(
-                    `Failed to ${type}. Please try again.`,
-                    'danger'
-                  );
-                },
-              });
-
-              */
-            //Uncomment bbove code to call real API
+            // Re-derive lastAction/lastCheckInTime/todayLogs from the DB rather than
+            // guessing the new state locally — keeps this page honest about what actually
+            // got persisted instead of what we merely attempted.
+            await this.refreshAttendanceState();
+            await this.showToast(`${type === 'check-in' ? 'Check In' : 'Check Out'} successful!`, 'success');
           },
         },
       ],
+    });
+    await alert.present();
+  }
+
+  private async showBluetoothDisabledAlert() {
+    const alert = await this.alertController.create({
+      header: 'Bluetooth Disabled',
+      message: 'Bluetooth is required for Office check-in. Please enable Bluetooth on your device and try again.',
+      buttons: ['OK'],
     });
     await alert.present();
   }
@@ -567,51 +543,113 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     this.router.navigate(['/attendance']);
   }
 
-  private saveToHistory(type: 'check-in' | 'check-out', mode: string) {
-    if (!this.currentPosition) return;
-    const stored = localStorage.getItem('attendance_history') || '[]';
-    try {
-      const history = JSON.parse(stored);
-      history.push({
-        type,
-        timestamp: new Date().toISOString(),
-        latitude: this.currentPosition.latitude,
-        longitude: this.currentPosition.longitude,
-        mode
-      });
-      localStorage.setItem('attendance_history', JSON.stringify(history));
-    } catch (e) {
-      console.error('Error saving history to localStorage:', e);
+  /**
+   * Single source of truth for "am I currently checked in" and "today's sessions" — both
+   * derived from one DB fetch (no date range passed, so the endpoint's own default of the
+   * last 24 months applies, comfortably covering "checked in days ago, never checked out"
+   * without a second, narrower call).
+   */
+  private async refreshAttendanceState() {
+    this.allHistoryEntries = await this.SharedApiService.fetchAttendanceHistory();
+
+    const checkEvents = this.allHistoryEntries
+      .filter((e) => e.type === 'check-in' || e.type === 'check-out')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    if (checkEvents.length > 0) {
+      this.lastAction = checkEvents[0].type as 'check-in' | 'check-out';
+      this.lastCheckInTime = this.lastAction === 'check-in' ? checkEvents[0].timestamp : null;
+    } else {
+      this.lastAction = null;
+      this.lastCheckInTime = null;
+    }
+
+    if (this.lastAction === 'check-in') {
+      this.startServiceMonitor();
+    } else {
+      this.stopServiceMonitor();
+    }
+
+    this.loadTodayLogs();
+  }
+
+  /**
+   * Polls Bluetooth (Office mode only)/Location device-service state while a
+   * session is active — the one-time onCheckIn() gate only catches the state
+   * at the moment of tapping Check In, not a service being switched off later
+   * in the day, which would otherwise silently break background tracking with
+   * no feedback to the user.
+   */
+  private serviceMonitorHandle: any = null;
+  private bluetoothWasOk = true;
+  private locationServiceWasOk = true;
+
+  private startServiceMonitor() {
+    if (this.serviceMonitorHandle) return;
+    this.bluetoothWasOk = true;
+    this.locationServiceWasOk = true;
+    this.serviceMonitorHandle = setInterval(() => this.checkActiveSessionServices(), 30000);
+  }
+
+  private stopServiceMonitor() {
+    if (this.serviceMonitorHandle) {
+      clearInterval(this.serviceMonitorHandle);
+      this.serviceMonitorHandle = null;
     }
   }
 
-  loadTodayLogs() {
-    this.todayLogs = [];
-    const storedHistory = localStorage.getItem('attendance_history');
-    if (storedHistory) {
-      try {
-        const history = JSON.parse(storedHistory);
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const todayKey = `${year}-${month}-${day}`;
-
-        this.todayLogs = history
-          .filter((entry: any) => {
-            if (entry.type !== 'check-in' && entry.type !== 'check-out') return false;
-            const entryDateObj = new Date(entry.timestamp);
-            const entryYear = entryDateObj.getFullYear();
-            const entryMonth = String(entryDateObj.getMonth() + 1).padStart(2, '0');
-            const entryDay = String(entryDateObj.getDate()).padStart(2, '0');
-            const entryKey = `${entryYear}-${entryMonth}-${entryDay}`;
-            return entryKey === todayKey;
-          })
-          .sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      } catch (e) {
-        console.error('Error loading today logs:', e);
+  /** Edge-triggered: alerts once per on→off transition, not repeatedly while it stays off. */
+  private async checkActiveSessionServices() {
+    if (this.selectedPerimeter === 'office') {
+      const bluetoothOk = await this.attendanceTrackingService.isBluetoothEnabled();
+      if (!bluetoothOk && this.bluetoothWasOk) {
+        await this.showBluetoothDisabledMidSessionAlert();
       }
+      this.bluetoothWasOk = bluetoothOk;
     }
+
+    const locationOk = await this.attendanceTrackingService.isLocationServiceEnabled();
+    if (!locationOk && this.locationServiceWasOk) {
+      await this.showLocationDisabledMidSessionAlert();
+    }
+    this.locationServiceWasOk = locationOk;
+  }
+
+  private async showBluetoothDisabledMidSessionAlert() {
+    const alert = await this.alertController.create({
+      header: 'Bluetooth Disabled',
+      message: 'Bluetooth has been turned off. Please re-enable it — Office attendance tracking needs it to keep working.',
+      buttons: ['OK'],
+    });
+    await alert.present();
+  }
+
+  private async showLocationDisabledMidSessionAlert() {
+    const alert = await this.alertController.create({
+      header: 'Location Disabled',
+      message: 'Location/GPS has been turned off. Please re-enable it — attendance tracking needs it to keep working.',
+      buttons: ['OK'],
+    });
+    await alert.present();
+  }
+
+  loadTodayLogs() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayKey = `${year}-${month}-${day}`;
+
+    this.todayLogs = this.allHistoryEntries
+      .filter((entry) => {
+        if (entry.type !== 'check-in' && entry.type !== 'check-out') return false;
+        const entryDateObj = new Date(entry.timestamp);
+        const entryYear = entryDateObj.getFullYear();
+        const entryMonth = String(entryDateObj.getMonth() + 1).padStart(2, '0');
+        const entryDay = String(entryDateObj.getDate()).padStart(2, '0');
+        return `${entryYear}-${entryMonth}-${entryDay}` === todayKey;
+      })
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }
 
   formatCheckInTime(isoString: string): string {

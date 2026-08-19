@@ -18,6 +18,7 @@ export class HeaderComponent implements OnInit {
   username = 'Employee';
   companyName = 'Zeonix Technologies';
   userImage: string = 'https://ionicframework.com/docs/img/demos/avatar.svg';
+  checkedIn = false;
 
   constructor(
     private authService: AuthService,
@@ -47,6 +48,12 @@ export class HeaderComponent implements OnInit {
       }
 
     }
+
+    const history = await this.SharedApiService.fetchAttendanceHistory();
+    const checkEvents = history
+      .filter((e) => e.type === 'check-in' || e.type === 'check-out')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    this.checkedIn = checkEvents.length > 0 && checkEvents[0].type === 'check-in';
   }
 
   get selectedPerimeterName(): string {
@@ -55,20 +62,6 @@ export class HeaderComponent implements OnInit {
     if (selected === 'field_duty') return 'Field Duty';
     if (selected === 'remote') return 'Remote Work';
     return '';
-  }
-
-  isCheckedIn(): boolean {
-    const stored = localStorage.getItem('attendance_history');
-    if (!stored) return false;
-    try {
-      const history = JSON.parse(stored);
-      if (history.length === 0) return false;
-      // Sort by timestamp descending
-      history.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      return history[0].type === 'check-in';
-    } catch (e) {
-      return false;
-    }
   }
 
   switchMode() {

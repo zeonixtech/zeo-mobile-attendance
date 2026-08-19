@@ -146,6 +146,60 @@ export class AttendanceTrackingService {
     await plugin.stopTracking();
   }
 
+  /**
+   * Fresh one-shot native location fix with mock-provider detection, for gating
+   * Check In/Check Out at the moment of confirming. Returns null if the plugin isn't
+   * available (e.g. running in a browser during development) or the native call fails —
+   * callers should fail open in that case, since this is a best-effort deterrent against
+   * fake-GPS apps, not a hard security boundary tied to app/plugin integrity.
+   */
+  async checkMockLocation(): Promise<{ latitude: number; longitude: number; accuracy: number; isMock: boolean } | null> {
+    const plugin = this.getGpsPlugin();
+    if (!plugin) return null;
+    try {
+      return await plugin.checkMockLocation();
+    } catch (e) {
+      console.error('AttendanceTrackingService: error checking mock location:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Live device check, not a permission check — Office check-in starts BLE
+   * advertising, which silently no-ops natively if Bluetooth is off (see
+   * BleAdvertiserService.java). Fails open (returns true) if the plugin is
+   * unavailable, matching checkMockLocation()'s precedent: this is a best-effort
+   * gate, not a hard security boundary.
+   */
+  async isBluetoothEnabled(): Promise<boolean> {
+    const plugin = this.getBlePlugin();
+    if (!plugin) return true;
+    try {
+      const result = await plugin.isBluetoothEnabled();
+      return result?.enabled === true;
+    } catch (e) {
+      console.error('AttendanceTrackingService: error checking Bluetooth state:', e);
+      return true;
+    }
+  }
+
+  /**
+   * Quiet Location-Services-on/off check via the GPS plugin — unlike
+   * GeolocationService.requestHighAccuracy(), this never triggers a native
+   * resolve dialog, so it's safe to poll repeatedly during an active session.
+   */
+  async isLocationServiceEnabled(): Promise<boolean> {
+    const plugin = this.getGpsPlugin();
+    if (!plugin) return true;
+    try {
+      const result = await plugin.isLocationServiceEnabled();
+      return result?.enabled === true;
+    } catch (e) {
+      console.error('AttendanceTrackingService: error checking Location service state:', e);
+      return true;
+    }
+  }
+
   private getBlePlugin(): any {
     if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.BleBeacon) {
       return null;

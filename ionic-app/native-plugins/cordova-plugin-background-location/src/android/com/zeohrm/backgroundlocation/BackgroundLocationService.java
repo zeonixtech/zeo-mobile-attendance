@@ -6,11 +6,14 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -22,6 +25,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.location.LocationManagerCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -41,6 +45,10 @@ public class BackgroundLocationService extends Service {
     private static final String TAG = "BackgroundLocationSvc";
     private static final String CHANNEL_ID = "zeohrm_location_channel";
     private static final int NOTIFICATION_ID = 1001;
+    private static final String MOCK_WARNING_CHANNEL_ID = "zeohrm_mock_warning_channel";
+    private static final int MOCK_WARNING_NOTIFICATION_ID = 1002;
+    private static final String LOCATION_WARNING_CHANNEL_ID = "zeohrm_location_warning_channel";
+    private static final int LOCATION_WARNING_NOTIFICATION_ID = 1004;
     
     // Default 30 minutes
     private static final long DEFAULT_INTERVAL_MS = 30 * 60 * 1000;
@@ -64,18 +72,52 @@ public class BackgroundLocationService extends Service {
 
     private boolean isRunning = false;
     private CancellationTokenSource cancellationTokenSource;
+    // Tracks the previous ping's mock status so the warning notification only fires on the
+    // not-mock -> mock transition, not on every single flagged ping (would spam every
+    // 1-30 min depending on updateIntervalMs for as long as mock location stays on).
+    private boolean wasMockLocation = false;
+    private BroadcastReceiver locationModeReceiver;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "Service created");
-        
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         handler = new Handler(Looper.getMainLooper());
         cancellationTokenSource = new CancellationTokenSource();
-        
+
         createNotificationChannel();
         createLocationCallback();
+        registerLocationModeReceiver();
+    }
+
+    /**
+     * Toggling Location off doesn't stop this foreground service or its ongoing
+     * notification — fusedLocationClient just quietly stops delivering results, with
+     * no error surfaced anywhere. Without this, tracking silently goes dark with no
+     * signal to the user, especially if the app itself isn't open to catch it via the
+     * WebView-side poll. Mirrors BleAdvertiserService's bluetoothStateReceiver.
+     */
+    private void registerLocationModeReceiver() {
+        locationModeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (!isRunning) return;
+
+                LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+                boolean enabled = lm != null && LocationManagerCompat.isLocationEnabled(lm);
+                if (!enabled) {
+                    Log.w(TAG, "Location services disabled while tracking was expected to be running");
+                    notifyLocationDisabled();
+                }
+            }
+        };
+        ContextCompat.registerReceiver(
+                this,
+                locationModeReceiver,
+                new IntentFilter(LocationManager.MODE_CHANGED_ACTION),
+                ContextCompat.RECEIVER_NOT_EXPORTED);
     }
 
     @Override
@@ -160,11 +202,59 @@ public class BackgroundLocationService extends Service {
             channel.setDescription("Background location tracking for attendance");
             channel.setShowBadge(false);
             channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
-            
+
+            // Separate, higher-importance channel for the mock-location warning — the
+            // tracking channel above is deliberately silent/low-priority, but a fake-GPS
+            // warning should actually surface to the user, not blend into the ongoing
+            // "tracking active" notification.
+            NotificationChannel mockWarningChannel = new NotificationChannel(
+                MOCK_WARNING_CHANNEL_ID,
+                "Fake Location Warnings",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            mockWarningChannel.setDescription("Alerts when mock/fake GPS location is detected");
+
+            // Separate channel for the Location-services-disabled warning, distinct from
+            // both the silent tracking channel and the mock-location warning channel.
+            NotificationChannel locationWarningChannel = new NotificationChannel(
+                LOCATION_WARNING_CHANNEL_ID,
+                "Location Warnings",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            locationWarningChannel.setDescription("Alerts when Location/GPS is turned off during tracking");
+
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
+                manager.createNotificationChannel(mockWarningChannel);
+                manager.createNotificationChannel(locationWarningChannel);
             }
+        }
+    }
+
+    private void notifyLocationDisabled() {
+        Intent appIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+            this, 0, appIntent != null ? appIntent : new Intent(),
+            PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, LOCATION_WARNING_CHANNEL_ID)
+            .setContentTitle("Location Disabled")
+            .setContentText("Location/GPS was turned off — attendance tracking has stopped. Please re-enable it.")
+            .setSmallIcon(getNotificationIconResId())
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setChannelId(LOCATION_WARNING_CHANNEL_ID);
+        }
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.notify(LOCATION_WARNING_NOTIFICATION_ID, builder.build());
         }
     }
 
@@ -288,10 +378,35 @@ public class BackgroundLocationService extends Service {
     }
 
     private void handleLocationUpdate(Location location) {
+        boolean isMock = location.isFromMockProvider();
         Log.d(TAG, "Location received: " + location.getLatitude() + ", " + location.getLongitude() +
-              " accuracy: " + location.getAccuracy() + "m");
+              " accuracy: " + location.getAccuracy() + "m isMock: " + isMock);
 
-        postLocationToBackend(location);
+        if (isMock && !wasMockLocation) {
+            notifyMockLocationDetected();
+        }
+        wasMockLocation = isMock;
+
+        postLocationToBackend(location, isMock);
+    }
+
+    private void notifyMockLocationDetected() {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, MOCK_WARNING_CHANNEL_ID)
+            .setContentTitle("Fake GPS location detected")
+            .setContentText("Mock location was detected while tracking attendance. This has been flagged.")
+            .setSmallIcon(getNotificationIconResId())
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setChannelId(MOCK_WARNING_CHANNEL_ID);
+        }
+
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager != null) {
+            manager.notify(MOCK_WARNING_NOTIFICATION_ID, builder.build());
+        }
     }
 
     /**
@@ -299,7 +414,7 @@ public class BackgroundLocationService extends Service {
      * background thread. Runs independently of the WebView/JS layer so delivery
      * keeps working while the phone is locked or the app is closed.
      */
-    private void postLocationToBackend(final Location location) {
+    private void postLocationToBackend(final Location location, final boolean isMock) {
         final String url = apiUrl;
         final String key = apiKey;
         if (url == null || url.isEmpty() || key == null || key.isEmpty()) {
@@ -330,6 +445,7 @@ public class BackgroundLocationService extends Service {
                     json.put("longitude", location.getLongitude());
                     json.put("accuracy", location.getAccuracy());
                     json.put("timestamp", location.getTime());
+                    json.put("isMock", isMock);
 
                     connection = (HttpURLConnection) new URL(url).openConnection();
                     connection.setRequestMethod("POST");
@@ -377,6 +493,14 @@ public class BackgroundLocationService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "Service destroyed");
+        if (locationModeReceiver != null) {
+            try {
+                unregisterReceiver(locationModeReceiver);
+            } catch (IllegalArgumentException e) {
+                // already unregistered — harmless
+            }
+            locationModeReceiver = null;
+        }
         stopLocationUpdates();
         isRunning = false;
     }

@@ -165,14 +165,14 @@ export class GeolocationService {
     });
   }
 
-  async requestHighAccuracy(): Promise<void> {
+  async requestHighAccuracy(): Promise<boolean> {
     if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.locationAccuracy) {
-      return;
+      return true;
     }
 
-    return new Promise<void>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       cordova.plugins.locationAccuracy.request(
-        () => resolve(),
+        () => resolve(true),
         async (error: any) => {
           console.warn('Location accuracy request failed:', error);
           const alert = await this.alertController.create({
@@ -181,7 +181,7 @@ export class GeolocationService {
             buttons: ['OK']
           });
           await alert.present();
-          resolve();
+          resolve(false);
         },
         3 // REQUEST_PRIORITY_HIGH_ACCURACY
       );
