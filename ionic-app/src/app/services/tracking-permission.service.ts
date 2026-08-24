@@ -28,8 +28,11 @@ const ATTEMPT_STORAGE_PREFIX = 'zeohrm_permission_attempts_';
 export class TrackingPermissionService {
 
   permissionsFor(mode: TrackingMode): string[] {
+    // Office check-in runs BLE advertising AND GPS tracking side by side
+    // (see AttendanceTrackingService.startForMode), so it needs the same
+    // location permissions the GPS-only modes need, plus Bluetooth.
     if (mode === 'office') {
-      return [...BLUETOOTH_PERMISSIONS, NOTIFICATION_PERMISSION];
+      return [...BLUETOOTH_PERMISSIONS, ...FOREGROUND_LOCATION_PERMISSIONS, BACKGROUND_LOCATION_PERMISSION, NOTIFICATION_PERMISSION];
     }
     return [...FOREGROUND_LOCATION_PERMISSIONS, BACKGROUND_LOCATION_PERMISSION, NOTIFICATION_PERMISSION];
   }
@@ -58,13 +61,16 @@ export class TrackingPermissionService {
     const plugin = this.permissionsPlugin;
     if (!plugin) return 'granted'; // browser/dev fallback
 
-    if (mode === 'office') {
-      return this.requestAndEvaluate(mode, plugin, [...BLUETOOTH_PERMISSIONS, NOTIFICATION_PERMISSION]);
-    }
+    // Android 11+ rejects requesting background location alongside foreground
+    // permissions in the same call, so every mode requests foreground (+ Bluetooth
+    // for office) first, then background location as a separate second pass.
+    const firstPassPermissions = mode === 'office'
+      ? [...BLUETOOTH_PERMISSIONS, ...FOREGROUND_LOCATION_PERMISSIONS, NOTIFICATION_PERMISSION]
+      : [...FOREGROUND_LOCATION_PERMISSIONS, NOTIFICATION_PERMISSION];
 
-    const foreground = await this.requestAndEvaluate(mode, plugin, [...FOREGROUND_LOCATION_PERMISSIONS, NOTIFICATION_PERMISSION]);
-    if (foreground !== 'granted') {
-      return foreground;
+    const firstPass = await this.requestAndEvaluate(mode, plugin, firstPassPermissions);
+    if (firstPass !== 'granted') {
+      return firstPass;
     }
     return this.requestAndEvaluate(mode, plugin, [BACKGROUND_LOCATION_PERMISSION]);
   }
@@ -83,6 +89,27 @@ export class TrackingPermissionService {
   /** Clears the denial counter — call once permissions are confirmed granted (e.g. after returning from Settings). */
   resetAttempts(mode: TrackingMode): void {
     localStorage.removeItem(ATTEMPT_STORAGE_PREFIX + mode);
+  }
+
+  /** Fails open (true) if the plugin is unavailable — matches this service's checkPermission fallbacks. */
+  async isIgnoringBatteryOptimizations(): Promise<boolean> {
+    if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.BackgroundLocation) return true;
+    try {
+      const result = await cordova.plugins.BackgroundLocation.isIgnoringBatteryOptimizations();
+      return result?.ignoring === true;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  /** Launches Android's system dialog; there's no callback for the user's actual choice, only for the dialog opening. */
+  async requestIgnoreBatteryOptimizations(): Promise<void> {
+    if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.BackgroundLocation) return;
+    try {
+      await cordova.plugins.BackgroundLocation.requestIgnoreBatteryOptimizations();
+    } catch (e) {
+      // user declined the exemption or the dialog couldn't be shown — nothing more to do
+    }
   }
 
   private checkOne(plugin: any, permission: string): Promise<boolean> {

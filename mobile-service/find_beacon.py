@@ -16,7 +16,20 @@ OFFICE_BEACON_UUID_PREFIX = "41555343-414e-4000-8000-"
 DB_PATH = "beacons.db"
 seen = {}
 
+# This file and send_beacon_summary.py both hold their own connection to the same
+# beacons.db, running as two independent long-lived processes — this one inserting
+# continuously as sightings arrive, the other periodically SELECTing + DELETEing on
+# its report cycle. Default SQLite locking (rollback-journal mode) lets a writer or
+# a reader hold the whole file exclusively, so the two processes contending for it
+# is a real, recurring risk, not a hypothetical one. WAL mode lets a writer and
+# readers proceed concurrently (only writer-vs-writer still has to wait its turn),
+# and busy_timeout makes that wait patient instead of raising immediately. Set here
+# in code rather than relying on it already being set on the file, since a fresh or
+# recreated beacons.db would otherwise silently revert to the default and reintroduce
+# the exact contention this exists to prevent.
 db = sqlite3.connect(DB_PATH)
+db.execute("PRAGMA journal_mode=WAL;")
+db.execute("PRAGMA busy_timeout=10000;")
 db.execute("""
     CREATE TABLE IF NOT EXISTS beacon_sightings (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,11 +72,21 @@ def on_device(device: BLEDevice, adv: AdvertisementData):
     }
 
     print(json.dumps(payload, indent=2))
-    db.execute(
-        "INSERT INTO beacon_sightings (mac, beacon_id, device_name, rssi, uuids, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-        (mac, beacon_id, device_name, rssi, json.dumps(uuids), payload["timestamp"])
-    )
-    db.commit()
+    # This callback runs synchronously inside bleak's BLE stack — an uncaught
+    # exception here (e.g. SQLITE_BUSY surviving the busy_timeout, however unlikely)
+    # would propagate up through the scanner's event loop and crash the whole
+    # process, not just drop this one sighting. Caught and logged instead: losing
+    # one insert is fine, losing the scanner until systemd notices and restarts it
+    # (RestartSec=5, plus everything scanned in that gap) is not.
+    try:
+        db.execute(
+            "INSERT INTO beacon_sightings (mac, beacon_id, device_name, rssi, uuids, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+            (mac, beacon_id, device_name, rssi, json.dumps(uuids), payload["timestamp"])
+        )
+        db.commit()
+    except sqlite3.Error as e:
+        print(f"# DB error inserting sighting for {mac}: {e}")
+        return
 
     seen[mac] = {"beacon_id": beacon_id, "rssi": rssi}
 

@@ -52,7 +52,6 @@ public class BackgroundLocationService extends Service {
     
     // Default 30 minutes
     private static final long DEFAULT_INTERVAL_MS = 30 * 60 * 1000;
-    private static final long FASTEST_INTERVAL_MS = 60 * 1000; // 1 minute
     
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
@@ -339,9 +338,9 @@ public class BackgroundLocationService extends Service {
         }
 
         try {
-            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, FASTEST_INTERVAL_MS)
+            LocationRequest locationRequest = new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, updateIntervalMs)
                 .setWaitForAccurateLocation(true)
-                .setMinUpdateIntervalMillis(FASTEST_INTERVAL_MS)
+                .setMinUpdateIntervalMillis(updateIntervalMs)
                 .setMaxUpdateDelayMillis(updateIntervalMs)
                 .build();
 

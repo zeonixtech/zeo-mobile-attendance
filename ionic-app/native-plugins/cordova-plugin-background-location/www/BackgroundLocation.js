@@ -83,6 +83,39 @@ var BackgroundLocation = {
     },
 
     /**
+     * Deep-links into this app's system Settings page (native action; used when
+     * Android has permanently stopped showing its own permission dialog after
+     * repeated denials). Raw-callback style, not Promise-wrapped, to match how
+     * TrackingPermissionService.openAppSettings() already calls this.
+     * @param {Function} successCallback
+     * @param {Function} errorCallback
+     */
+    openAppSettings: function(successCallback, errorCallback) {
+        exec(successCallback, errorCallback, 'BackgroundLocation', 'openAppSettings', []);
+    },
+
+    /**
+     * Check whether this app is currently exempted from Android's battery optimization.
+     * @returns {Promise<{ignoring: boolean}>}
+     */
+    isIgnoringBatteryOptimizations: function() {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, 'BackgroundLocation', 'isIgnoringBatteryOptimizations', []);
+        });
+    },
+
+    /**
+     * Launches the system dialog to request battery-optimization exemption.
+     * @returns {Promise} Resolves once the dialog has been launched (not once the
+     * user has responded to it — there's no callback for that on Android).
+     */
+    requestIgnoreBatteryOptimizations: function() {
+        return new Promise(function(resolve, reject) {
+            exec(resolve, reject, 'BackgroundLocation', 'requestIgnoreBatteryOptimizations', []);
+        });
+    },
+
+    /**
      * Listen for location updates
      * @param {Function} callback - Called with location data
      * @returns {Function} Unsubscribe function

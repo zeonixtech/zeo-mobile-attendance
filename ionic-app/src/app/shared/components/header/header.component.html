@@ -31,7 +31,7 @@
     </div>
 
     <div class="menu-items-container">
-      <ion-menu-toggle auto-hide="false" *ngIf="!checkedIn && selectedPerimeterName" [menu]="contentId + '-menu'">
+      <ion-menu-toggle auto-hide="false" *ngIf="selectedPerimeterName" [menu]="contentId + '-menu'">
         <ion-item (click)="switchMode()" button detail="false" class="menu-switch-button">
           <ion-icon name="swap-horizontal-outline" slot="start"></ion-icon>
           <ion-label>Switch Attendance Mode</ion-label>

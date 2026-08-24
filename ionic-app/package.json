@@ -109,8 +109,8 @@
         "ANDROID_PATHPREFIX": "/"
       },
       "cordova-plugin-android-permissions": {},
-      "cordova-plugin-ble-beacon": {},
-      "cordova-plugin-background-location": {}
+      "cordova-plugin-background-location": {},
+      "cordova-plugin-ble-beacon": {}
     },
     "platforms": [
       "android"

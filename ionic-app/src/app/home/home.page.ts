@@ -146,6 +146,11 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
     this.activeArea = await this.getActiveArea();
 
     await this.refreshAttendanceState();
+    if (this.lastAction === 'check-in') {
+      await this.attendanceTrackingService.ensureTrackingRunning(this.selectedPerimeter || 'office');
+    }
+
+    document.addEventListener('resume', this.onResume, false);
 
     await this.deviceInfoService.loadDeviceInfo();
     this.deviceInfo = this.deviceInfoService.getDeviceInfo();
@@ -177,7 +182,23 @@ export class HomePage implements OnInit, OnDestroy, AfterViewInit, ViewWillEnter
   ngOnDestroy() {
     this.geolocationService.stopWatching();
     this.stopServiceMonitor();
+    document.removeEventListener('resume', this.onResume);
   }
+
+  /**
+   * Covers the more common real-world case ensureTrackingRunning() exists for: the
+   * app sitting backgrounded (not relaunched) while the OS kills a long-running
+   * foreground service — force-stop, OEM battery management, etc. ngOnInit()'s own
+   * check only catches a full app relaunch, which is the less common path back in.
+   */
+  private onResume = () => {
+    this.ngZone.run(async () => {
+      await this.refreshAttendanceState();
+      if (this.lastAction === 'check-in') {
+        await this.attendanceTrackingService.ensureTrackingRunning(this.selectedPerimeter || 'office');
+      }
+    });
+  };
 
   /** Memoized so ngOnInit and initMap — whichever runs first — share one fetch. */
   private getActiveArea(): Promise<OperatingArea | null> {

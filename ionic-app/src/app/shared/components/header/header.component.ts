@@ -5,6 +5,9 @@ import { SharedApi } from 'src/app/services/shared-api';
 import { environment } from 'src/environments/environment';
 import { AlertController } from '@ionic/angular';
 import { AttendanceTrackingService } from 'src/app/services/attendance-tracking.service';
+import { GeolocationService } from 'src/app/services/geolocation.service';
+import { DeviceInfoService } from 'src/app/services/device-info.service';
+import { HistoryEntry } from '../../../attendance/attendance.page';
 
 @Component({
   selector: 'app-header',
@@ -18,7 +21,6 @@ export class HeaderComponent implements OnInit {
   username = 'Employee';
   companyName = 'Zeonix Technologies';
   userImage: string = 'https://ionicframework.com/docs/img/demos/avatar.svg';
-  checkedIn = false;
 
   constructor(
     private authService: AuthService,
@@ -26,7 +28,9 @@ export class HeaderComponent implements OnInit {
     private router: Router,
     private ngZone: NgZone,
     private alertController: AlertController,
-    private attendanceTrackingService: AttendanceTrackingService
+    private attendanceTrackingService: AttendanceTrackingService,
+    private geolocationService: GeolocationService,
+    private deviceInfoService: DeviceInfoService
   ) { }
 
   async ngOnInit() {
@@ -48,12 +52,6 @@ export class HeaderComponent implements OnInit {
       }
 
     }
-
-    const history = await this.SharedApiService.fetchAttendanceHistory();
-    const checkEvents = history
-      .filter((e) => e.type === 'check-in' || e.type === 'check-out')
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    this.checkedIn = checkEvents.length > 0 && checkEvents[0].type === 'check-in';
   }
 
   get selectedPerimeterName(): string {
@@ -64,7 +62,33 @@ export class HeaderComponent implements OnInit {
     return '';
   }
 
-  switchMode() {
+  /**
+   * Checks live state at the moment of the call rather than a cached flag — this
+   * component doesn't hook ionViewWillEnter, so a cached "checked in" boolean set
+   * once in ngOnInit would go stale for the rest of the session the moment the
+   * user actually checks in.
+   */
+  private async getLatestCheckEvent(): Promise<HistoryEntry | null> {
+    const history = await this.SharedApiService.fetchAttendanceHistory();
+    const checkEvents = history
+      .filter((e) => e.type === 'check-in' || e.type === 'check-out')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return checkEvents[0] || null;
+  }
+
+  async switchMode() {
+    const checkedIn = (await this.getLatestCheckEvent())?.type === 'check-in';
+
+    if (checkedIn) {
+      const alert = await this.alertController.create({
+        header: 'Check Out First',
+        message: 'You are currently checked in. Please check out before switching your attendance mode.',
+        buttons: ['OK'],
+      });
+      await alert.present();
+      return;
+    }
+
     this.ngZone.run(() => {
       this.router.navigate(['/select-option'], { queryParams: { switching: 'true' } });
     });
@@ -88,6 +112,27 @@ export class HeaderComponent implements OnInit {
           text: 'Yes',
           handler: async () => {
             try {
+              // If still checked in, record a checkout before tearing anything down —
+              // otherwise attendanceTrackingService.stop() below silences the device
+              // but the backend still shows the last event as check-in indefinitely,
+              // since nothing else ever posts the matching checkout.
+              const latest = await this.getLatestCheckEvent();
+              if (latest?.type === 'check-in') {
+                const position = this.geolocationService.getCurrentPositionValue();
+                if (position) {
+                  await this.SharedApiService.postCheckEvent(
+                    'check-out',
+                    this.selectedPerimeterName || 'Office',
+                    position.latitude,
+                    position.longitude,
+                    false,
+                    this.deviceInfoService.getDeviceInfo()
+                  );
+                } else {
+                  console.warn('HeaderComponent: logging out while checked in but no cached position available — skipping auto checkout');
+                }
+              }
+
               await this.attendanceTrackingService.stop();
               await this.authService.logout();
               console.log('HeaderComponent: authService.logout completed');

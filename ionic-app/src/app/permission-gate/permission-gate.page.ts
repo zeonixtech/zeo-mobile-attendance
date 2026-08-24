@@ -74,8 +74,29 @@ export class PermissionGatePage implements OnInit, OnDestroy {
     // the Check In / Check Out buttons on HomePage now, so a mode switch or a fresh
     // permission grant alone doesn't start broadcasting until the user actually checks in.
     this.trackingPermissionService.resetAttempts(this.mode);
+    await this.maybePromptBatteryExemption();
     this.zone.run(() => {
       this.router.navigate(['/home'], { replaceUrl: true });
     });
+  }
+
+  /**
+   * One-time, regardless of mode — GPS tracking runs in every mode, not just Office,
+   * so this isn't gated to a specific one. Without this exemption, a long-running
+   * foreground service left idle (e.g. overnight) is a real risk of being killed by
+   * OS/OEM battery management with nothing in the app noticing (see
+   * AttendanceTrackingService.ensureTrackingRunning() for the self-healing half of
+   * this fix). Flagged in localStorage before prompting so a decline doesn't re-nag
+   * on every subsequent app open or mode switch.
+   */
+  private async maybePromptBatteryExemption() {
+    const PROMPTED_KEY = 'zeohrm_battery_exemption_prompted';
+    if (localStorage.getItem(PROMPTED_KEY)) return;
+    localStorage.setItem(PROMPTED_KEY, 'true');
+
+    const alreadyExempt = await this.trackingPermissionService.isIgnoringBatteryOptimizations();
+    if (!alreadyExempt) {
+      await this.trackingPermissionService.requestIgnoreBatteryOptimizations();
+    }
   }
 }

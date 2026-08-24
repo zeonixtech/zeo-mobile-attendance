@@ -10,13 +10,15 @@ export type TrackingMode = 'office' | 'field_duty' | 'remote';
 /** Cached per-employee BLE service UUID from GET /attendance/beacon-identity — see startBeacon(). */
 const BEACON_UUID_STORAGE_KEY = 'zeohrm_beacon_service_uuid';
 
+// TEMP FOR TESTING: field_duty/remote dropped to 1 minute to make the interval fix easy
+// to observe live — revert both back to 30 minutes before shipping.
 // Office is left at 1 minute (working fine as-is). Field Duty/Remote have no BLE beacon
 // backstop for timing, but a 30-minute GPS interval is still enough to place them for
 // attendance purposes without the battery/data cost of polling every minute all day.
 const LOCATION_UPDATE_INTERVAL_MS: Record<TrackingMode, number> = {
   office: 1 * 60 * 1000,
-  field_duty: 30 * 60 * 1000,
-  remote: 30 * 60 * 1000,
+  field_duty: 1 * 60 * 1000, // TEMP — was 30 * 60 * 1000
+  remote: 1 * 60 * 1000, // TEMP — was 30 * 60 * 1000
 };
 
 /**
@@ -50,11 +52,20 @@ export class AttendanceTrackingService {
     const run = this.inFlight.then(async () => {
       await this.stop();
 
-      if (mode === 'office') {
-        await this.startBeacon();
-        await this.startGps(mode);
-      } else {
-        await this.startGps(mode);
+      // Fails open (logs and continues) rather than letting a rejected native
+      // call propagate — the confirm handler in home.page.ts awaits this, and an
+      // uncaught rejection here would silently abort the check-in with no
+      // feedback to the user. A tracking hiccup shouldn't block the check-in
+      // event itself from being recorded.
+      try {
+        if (mode === 'office') {
+          await this.startBeacon();
+          await this.startGps(mode);
+        } else {
+          await this.startGps(mode);
+        }
+      } catch (e) {
+        console.error('AttendanceTrackingService: error starting tracking for mode', mode, e);
       }
     });
     this.inFlight = run.catch(() => {});
@@ -72,6 +83,47 @@ export class AttendanceTrackingService {
     // abandoning its startForeground() obligation and crashing the app with
     // ForegroundServiceDidNotStartInTimeException. Confirmed via on-device testing.
     await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await this.verifyStopped();
+  }
+
+  /**
+   * getBlePlugin()/getGpsPlugin() can transiently return null (e.g. the WebView's
+   * Cordova plugin bridge re-initializing after a memory-pressure reload) — if that
+   * happens to land during stopBeacon()/stopGps(), the native stop call is silently
+   * skipped with no error, checkout still records fine, and the already-running
+   * native service just keeps advertising/tracking with nothing left to tell it to
+   * stop. getStatus() reads a flag the native side only clears *inside* its own stop
+   * handler, so it still correctly reports "running" in that case — this re-checks
+   * shortly after, and if the plugin has since become available again, retries the
+   * stop for real instead of trusting an unverified no-op as success.
+   */
+  private async verifyStopped(): Promise<void> {
+    const blePlugin = this.getBlePlugin();
+    if (blePlugin) {
+      try {
+        const status = await blePlugin.getStatus();
+        if (status?.isRunning) {
+          console.warn('AttendanceTrackingService: BLE advertising still reports running after stop — retrying');
+          await blePlugin.stopAdvertising();
+        }
+      } catch (e) {
+        console.error('AttendanceTrackingService: error verifying BLE advertising stopped:', e);
+      }
+    }
+
+    const gpsPlugin = this.getGpsPlugin();
+    if (gpsPlugin) {
+      try {
+        const status = await gpsPlugin.getStatus();
+        if (status?.isRunning) {
+          console.warn('AttendanceTrackingService: GPS tracking still reports running after stop — retrying');
+          await gpsPlugin.stopTracking();
+        }
+      } catch (e) {
+        console.error('AttendanceTrackingService: error verifying GPS tracking stopped:', e);
+      }
+    }
   }
 
   private async startBeacon(): Promise<void> {
@@ -119,8 +171,15 @@ export class AttendanceTrackingService {
 
   private async stopBeacon(): Promise<void> {
     const plugin = this.getBlePlugin();
-    if (!plugin) return;
-    await plugin.stopAdvertising();
+    if (!plugin) {
+      console.warn('AttendanceTrackingService: BleBeacon plugin unavailable — cannot stop advertising directly (verifyStopped() will retry once it is)');
+      return;
+    }
+    try {
+      await plugin.stopAdvertising();
+    } catch (e) {
+      console.error('AttendanceTrackingService: error stopping BLE advertising:', e);
+    }
   }
 
   private async startGps(mode: TrackingMode): Promise<void> {
@@ -142,8 +201,15 @@ export class AttendanceTrackingService {
 
   private async stopGps(): Promise<void> {
     const plugin = this.getGpsPlugin();
-    if (!plugin) return;
-    await plugin.stopTracking();
+    if (!plugin) {
+      console.warn('AttendanceTrackingService: BackgroundLocation plugin unavailable — cannot stop tracking directly (verifyStopped() will retry once it is)');
+      return;
+    }
+    try {
+      await plugin.stopTracking();
+    } catch (e) {
+      console.error('AttendanceTrackingService: error stopping GPS tracking:', e);
+    }
   }
 
   /**
@@ -197,6 +263,37 @@ export class AttendanceTrackingService {
     } catch (e) {
       console.error('AttendanceTrackingService: error checking Location service state:', e);
       return true;
+    }
+  }
+
+  /**
+   * Self-healing check: the server-side check-in state (attendence_check_event_log)
+   * and the native services' actual running state can drift apart — a force-stop,
+   * an OS/OEM battery-optimization kill of a long-running foreground service, or a
+   * reboot where BootReceiver didn't fire all leave the UI showing "Active
+   * Attendance Session" while nothing is actually being broadcast/tracked, with no
+   * error anywhere to say so. Callers should invoke this whenever the app resumes
+   * or launches while already checked in, not just after a fresh check-in.
+   */
+  async ensureTrackingRunning(mode: TrackingMode): Promise<void> {
+    const needsBle = mode === 'office';
+    const [bleOk, gpsOk] = await Promise.all([
+      needsBle ? this.isServiceRunning(this.getBlePlugin()) : Promise.resolve(true),
+      this.isServiceRunning(this.getGpsPlugin()),
+    ]);
+    if (!bleOk || !gpsOk) {
+      console.warn(`AttendanceTrackingService: tracking was expected to be running for ${mode} but wasn't (ble=${bleOk}, gps=${gpsOk}) — restarting`);
+      await this.startForMode(mode);
+    }
+  }
+
+  private async isServiceRunning(plugin: any): Promise<boolean> {
+    if (!plugin) return true; // fail open — matches isBluetoothEnabled()/isLocationServiceEnabled() precedent
+    try {
+      const status = await plugin.getStatus();
+      return status?.isRunning === true;
+    } catch (e) {
+      return true; // fail open — don't force an unnecessary restart on a transient error
     }
   }
 

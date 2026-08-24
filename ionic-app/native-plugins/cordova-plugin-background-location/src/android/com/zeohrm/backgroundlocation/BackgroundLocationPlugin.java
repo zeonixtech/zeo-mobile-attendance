@@ -79,6 +79,12 @@ public class BackgroundLocationPlugin extends CordovaPlugin {
             case "isLocationServiceEnabled":
                 isLocationServiceEnabled(callbackContext);
                 return true;
+            case "isIgnoringBatteryOptimizations":
+                isIgnoringBatteryOptimizations(callbackContext);
+                return true;
+            case "requestIgnoreBatteryOptimizations":
+                requestIgnoreBatteryOptimizations(callbackContext);
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
@@ -98,6 +104,34 @@ public class BackgroundLocationPlugin extends CordovaPlugin {
         } catch (Exception e) {
             Log.e(TAG, "Error opening app settings", e);
             callbackContext.error("Failed to open settings: " + e.getMessage());
+        }
+    }
+
+    private void isIgnoringBatteryOptimizations(CallbackContext callbackContext) {
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) cordova.getActivity().getSystemService(Context.POWER_SERVICE);
+            boolean ignoring = pm != null && pm.isIgnoringBatteryOptimizations(cordova.getActivity().getPackageName());
+            JSONObject result = new JSONObject();
+            result.put("ignoring", ignoring);
+            callbackContext.success(result);
+        } catch (JSONException e) {
+            callbackContext.error("Error checking battery optimization state: " + e.getMessage());
+        }
+    }
+
+    /** Launches the system dialog letting the user exempt this app from battery
+     *  optimization, so its long-running foreground services (BLE/GPS tracking)
+     *  are less likely to be killed by the OS/OEM battery manager while idle. */
+    private void requestIgnoreBatteryOptimizations(CallbackContext callbackContext) {
+        try {
+            Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(Uri.parse("package:" + cordova.getActivity().getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            cordova.getActivity().startActivity(intent);
+            callbackContext.success();
+        } catch (Exception e) {
+            Log.e(TAG, "Error requesting battery optimization exemption", e);
+            callbackContext.error("Failed to open battery optimization settings: " + e.getMessage());
         }
     }
 
